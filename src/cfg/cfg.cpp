@@ -75,6 +75,7 @@ general_section_handler::general_section_handler(const std::string &name, boost:
 
     // defaults
     defaults_["daemonize"] = "false";
+    defaults_["log_type"] = "console";
     defaults_["log_facility"] = "mail";
     defaults_["log_priority"] = "info";
     defaults_["milter_timeout"] = "-1"; // milter default is not changed in this case
@@ -86,6 +87,11 @@ general_section_handler::general_section_handler(const std::string &name, boost:
     option_handlers_["daemonize"] = [this](auto &&arg) { process_daemonize(std::forward<decltype(arg)>(arg)); };
     option_handlers_["user"] = [this](auto &&arg) { process_user(std::forward<decltype(arg)>(arg)); };
     option_handlers_["group"] = [this](auto &&arg) { process_group(std::forward<decltype(arg)>(arg)); };
+    option_handlers_["log_type"] = [this](auto &&arg) { process_log_type(std::forward<decltype(arg)>(arg)); };
+    log_type_map_ = {
+        {"console", lexical_cast<string>(logger::console)},
+        {"syslog", lexical_cast<string>(logger::syslog)},
+    };
     option_handlers_["log_facility"] = [this](auto &&arg) { process_log_facility(std::forward<decltype(arg)>(arg)); };
     log_facility_map_ = {
         {"user", lexical_cast<string>(logger::facility_user)},
@@ -107,14 +113,12 @@ general_section_handler::general_section_handler(const std::string &name, boost:
     };
     option_handlers_["log_priority"] = [this](auto &&arg) { process_log_priority(std::forward<decltype(arg)>(arg)); };
     log_priority_map_ = {
+        {"trace", lexical_cast<string>(logger::priority_trace)},
         {"debug", lexical_cast<string>(logger::priority_debug)},
         {"info", lexical_cast<string>(logger::priority_info)},
-        {"notice", lexical_cast<string>(logger::priority_notice)},
-        {"warning", lexical_cast<string>(logger::priority_warning)},
+        {"warning", lexical_cast<string>(logger::priority_warn)},
         {"error", lexical_cast<string>(logger::priority_err)},
-        {"critical", lexical_cast<string>(logger::priority_crit)},
-        {"alert", lexical_cast<string>(logger::priority_alert)},
-        {"emerg", lexical_cast<string>(logger::priority_emerg)},
+        {"critical", lexical_cast<string>(logger::priority_critical)},
     };
     option_handlers_["milter_socket"] = [this](auto &&arg) { process_milter_socket(std::forward<decltype(arg)>(arg)); };
     option_handlers_["milter_timeout"] = [this](auto &&arg) {
@@ -154,6 +158,15 @@ void general_section_handler::process_group(const std::string &optval)
     options_["group"] = optval;
 }
 
+
+void general_section_handler::process_log_type(const std::string &optval)
+{
+    const auto it = log_type_map_.find(boost::to_lower_copy(optval));
+    if (it == log_type_map_.end())
+        throw cfg_exception(fmt::format(R"(section "{}", invalid value for "log_type" ({}))", GENERAL_SECTION, optval));
+
+    options_["log_type"] = it->second;
+}
 
 void general_section_handler::process_log_facility(const std::string &optval)
 {

@@ -10,22 +10,22 @@ using std::make_shared;
 
 sfsistat milter_connection::on_connect(const std::string &hostname, _SOCK_ADDR *hostaddr)
 {
-    L_INFO << connection_id_ << ": connect from hostname=" << hostname
-           << ", hostaddr=" << milter_connection::hostaddr_to_string(hostaddr);
+    spdlog::info("{}: connect from hostname={}, hostaddr={}", connection_id_, hostname,
+                 milter_connection::hostaddr_to_string(hostaddr));
     return SMFIS_CONTINUE;
 }
 
 
 sfsistat milter_connection::on_helo(const std::string &helohost)
 {
-    L_DEBUG << connection_id_ << ": helo/ehlo host=" << helohost;
+    spdlog::debug("{}: helo/ehlo host={}", connection_id_, helohost);
     return SMFIS_CONTINUE;
 }
 
 
 sfsistat milter_connection::on_close()
 {
-    L_INFO << connection_id_ << ": close-connection";
+    spdlog::info("{}: close-connection", connection_id_);
     msg_.reset();
     return SMFIS_CONTINUE;
 }
@@ -49,7 +49,7 @@ sfsistat milter_connection::on_abort()
 
 sfsistat milter_connection::on_unknown(const std::string &arg)
 {
-    L_DEBUG << connection_id_ << ": unknown arg=" << arg;
+    spdlog::debug("{}: unknown arg={}", connection_id_, arg);
     return SMFIS_CONTINUE;
 }
 

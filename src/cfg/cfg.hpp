@@ -74,6 +74,7 @@ private:
     void process_daemonize(const std::string &optval);
     void process_user(const std::string &optval);
     void process_group(const std::string &optval);
+    void process_log_type(const std::string &optval);
     void process_log_facility(const std::string &optval);
     void process_log_priority(const std::string &optval);
     void process_milter_socket(const std::string &optval);
@@ -86,6 +87,7 @@ private:
 
 private:
     // helper maps
+    std::map<std::string, std::string> log_type_map_;
     std::map<std::string, std::string> log_facility_map_;
     std::map<std::string, std::string> log_priority_map_;
 };

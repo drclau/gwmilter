@@ -1,7 +1,6 @@
 #pragma once
 #include "cfg/cfg.hpp"
 #include "handlers/body_handler.hpp"
-#include "logger/logger.hpp"
 #include "smtp/smtp_client.hpp"
 #include "utils/uid_generator.hpp"
 #include <crypto.hpp>

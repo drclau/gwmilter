@@ -26,7 +26,7 @@ dump_email::dump_email(const char *path, const char *prefix, const std::string &
     ofs << headers << "\r\n" << body;
 
     file_ = file_path.string();
-    L_DEBUG << "Email dumped into " << file_;
+    spdlog::debug("Email dumped into {}", file_);
 }
 
 
@@ -34,7 +34,7 @@ dump_email::~dump_email()
 {
     if (erase_) {
         std::filesystem::remove(file_);
-        L_DEBUG << "Removed " << file_;
+        spdlog::debug("Removed {}", file_);
     }
 }
 

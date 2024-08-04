@@ -106,7 +106,7 @@ void body_handler_base::make_multipart(const std::string &content_type)
                 "--" + multipart_boundary_ + "\r\n");
         // clang-format on
 
-        L_DEBUG << "Content converted to multipart/mixed";
+        spdlog::debug("Content converted to multipart/mixed");
     }
 }
 

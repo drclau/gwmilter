@@ -65,7 +65,7 @@ void drop_privileges(const std::string &user_name, const std::string &group_name
             throw runtime_error(fmt::format("setuid() failed: {}", utils::string::str_err(errno)));
     }
 
-    L_INFO << "Privileges dropped to uid:" << user_name << ", gid:" << group_name;
+    spdlog::info("Privileges dropped to uid:{}, gid:{}", user_name, group_name);
 }
 
 
@@ -99,10 +99,7 @@ int main(int argc, char *argv[])
         // initialize configuration
         cfg::cfg::inst().init(config_file);
         const auto g = cfg::cfg::inst().section(cfg::GENERAL_SECTION);
-
-        // initialize the logger
-        clog.rdbuf(new logger::syslog_writer("gwmilter", static_cast<logger::facilities>(g->get<int>("log_facility")),
-                                             static_cast<logger::priorities>(g->get<int>("log_priority"))));
+        logger::init(cfg::cfg::inst());
 
         if (g->get<bool>("daemonize")) {
             if (daemon(0, 0) == -1) {
@@ -113,7 +110,7 @@ int main(int argc, char *argv[])
 
         drop_privileges(g->get<string>("user"), g->get<string>("group"));
 
-        L_INFO << "gwmilter starting";
+        spdlog::info("gwmilter starting");
         gwmilter::milter m(g->get<string>("milter_socket"),
                            SMFIF_ADDHDRS | SMFIF_CHGHDRS | SMFIF_CHGBODY | SMFIF_ADDRCPT | SMFIF_ADDRCPT_PAR |
                                SMFIF_DELRCPT | SMFIF_QUARANTINE | SMFIF_CHGFROM | SMFIF_SETSYMLIST,
@@ -121,16 +118,16 @@ int main(int argc, char *argv[])
 
         m.run();
 
-        L_INFO << "gwmilter shutting down";
+        spdlog::info("gwmilter shutting down");
         return EXIT_SUCCESS;
     } catch (const cfg::cfg_exception &e) {
-        L_ERR << "Configuration file error: " << e.what();
+        spdlog::error("Configuration file error: {}", e.what());
     } catch (const boost::exception &e) {
-        L_ERR << "Boost exception caught: " << boost::diagnostic_information(e);
+        spdlog::error("Boost exception caught: {}", boost::diagnostic_information(e));
     } catch (const exception &e) {
-        L_ERR << "Exception caught: " << e.what();
+        spdlog::error("Exception caught: {}", e.what());
     } catch (...) {
-        L_ERR << "Unknown exception caught";
+        spdlog::error("Unknown exception caught");
     }
 
     return EXIT_FAILURE;

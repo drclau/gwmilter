@@ -4,7 +4,6 @@
 #include <cerrno>
 #include <cstring>
 #include <curl/curl.h>
-#include <iostream>
 #include <memory>
 #include <set>
 #include <string>
@@ -120,10 +119,10 @@ client_multi::~client_multi()
 
     for (const auto &curl_handle: curl_handles_)
         if ((curlm_code = curl_multi_remove_handle(curlm_, curl_handle)) != CURLM_OK)
-            L_ERR << "curl_multi_remove_handle() failed: " << curl_multi_strerror(curlm_code);
+            spdlog::error("curl_multi_remove_handle() failed: {}", curl_multi_strerror(curlm_code));
 
     if ((curlm_code = curl_multi_cleanup(curlm_)) != CURLM_OK)
-        L_ERR << "curl_multi_remove_handle() failed: " << curl_multi_strerror(curlm_code);
+        spdlog::error("curl_multi_remove_handle() failed: {}", curl_multi_strerror(curlm_code));
 }
 
 
@@ -196,9 +195,8 @@ int client_multi::perform()
                 long os_errno = 0;
                 curl_easy_getinfo(msg->easy_handle, CURLINFO_RESPONSE_CODE, &resp_code);
                 curl_easy_getinfo(msg->easy_handle, CURLINFO_OS_ERRNO, &os_errno);
-                L_ERR << "SMTP worker failed (response_code=" << resp_code << ", errno=" << os_errno
-                      << ", err=" << utils::string::str_err(os_errno) << ")";
-
+                spdlog::error("SMTP worker failed (response_code={}, errno={}, err={})", resp_code, os_errno,
+                              utils::string::str_err(os_errno));
                 ++failed_count;
             }
         }

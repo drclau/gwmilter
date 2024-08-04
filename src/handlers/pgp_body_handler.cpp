@@ -61,7 +61,7 @@ void pgp_body_handler::encrypt(const std::set<std::string> &recipients, std::str
     crypto_.encrypt(recipients, expired_keys_, body_, encrypted_body);
 
     if (!expired_keys_.empty())
-        L_WARN << "Following PGP keys have expired: " << utils::string::set_to_string(expired_keys_);
+        spdlog::warn("Following PGP keys have expired: {}", utils::string::set_to_string(expired_keys_));
 
     // get encrypted data
     encrypted_body.seek(0, data_buffer::SET);
