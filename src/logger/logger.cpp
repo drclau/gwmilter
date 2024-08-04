@@ -1,45 +1,29 @@
 #include "logger.hpp"
-#include <iostream>
+#include "cfg/cfg.hpp"
+#include <spdlog/sinks/stdout_sinks.h>
+#include <spdlog/sinks/syslog_sink.h>
+#include <spdlog/spdlog.h>
 
 namespace logger {
 
-thread_local std::string syslog_writer::buf_;
-
-
-syslog_writer::syslog_writer(const std::string &ident, facilities facility, priorities priority, int logopt)
-    : ident_{ident}, default_priority_{priority}, priority_{priority}
+void init(const gwmilter::cfg::cfg &cfg)
 {
-    openlog(ident.c_str(), logopt, facility);
-    // log all levels up to and including logLevel
-    setlogmask(LOG_UPTO(priority));
-}
+    const auto g = cfg.section(gwmilter::cfg::GENERAL_SECTION);
+    auto type = static_cast<types>(g->get<int>("log_type"));
+    auto priority = static_cast<priorities>(g->get<int>("log_priority"));
 
+    switch (type) {
+    case console:
+        // noop: use the default logger.
+        // Per spdlog docs the default is stdout, multithreaded, colored.
+        break;
+    case syslog:
+        auto facility = static_cast<facilities>(g->get<int>("log_facility"));
+        auto syslog_logger = spdlog::syslog_logger_mt("syslog", "gwmilter", LOG_PID, facility);
+        spdlog::set_default_logger(syslog_logger);
+    }
 
-syslog_writer::int_type syslog_writer::sync()
-{
-    if (buf_.empty())
-        return 0;
-
-    // write buffer to syslog
-    syslog(priority_, "%s", buf_.c_str());
-    buf_.clear();
-
-    // reset priority to default
-    priority_ = default_priority_;
-
-    // syslog() always succeeds...
-    return 0;
-}
-
-
-syslog_writer::int_type syslog_writer::overflow(int_type ch)
-{
-    if (traits_type::eq_int_type(ch, traits_type::eof()))
-        sync();
-    else
-        buf_.push_back(traits_type::to_char_type(ch));
-
-    return ch;
+    spdlog::set_level(static_cast<spdlog::level::level_enum>(priority));
 }
 
 } // namespace logger

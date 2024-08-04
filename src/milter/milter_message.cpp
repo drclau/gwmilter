@@ -19,24 +19,24 @@ const std::string milter_message::x_gwmilter_signature = "X-GWMilter-Signature";
 milter_message::milter_message(SMFICTX *ctx, const std::string &connection_id)
     : smfictx_{ctx}, connection_id_{connection_id}, message_id_{uid_gen_.generate()}
 {
-    L_INFO << message_id_ << ": begin message (connection_id=" << connection_id_ << ")";
+    spdlog::info("{}: begin message (connection_id={})", message_id_, connection_id_);
 }
 
 
 milter_message::~milter_message()
 {
-    L_INFO << message_id_ << ": end message (connection_id=" << connection_id_ << ")";
+    spdlog::info("{}: end message (connection_id={})", message_id_, connection_id_);
 }
 
 
 sfsistat milter_message::on_envfrom(const std::vector<std::string> &args)
 {
     if (args.empty()) {
-        L_WARN << message_id_ << ": sender is empty";
+        spdlog::warn("{}: sender is empty", message_id_);
         return SMFIS_CONTINUE;
     }
 
-    L_INFO << message_id_ << ": from=" << args[0];
+    spdlog::info("{}: from={}", message_id_, args[0]);
     sender_ = args[0];
     return SMFIS_CONTINUE;
 }
@@ -45,32 +45,32 @@ sfsistat milter_message::on_envfrom(const std::vector<std::string> &args)
 sfsistat milter_message::on_envrcpt(const std::vector<std::string> &args)
 {
     if (args.empty()) {
-        L_ERR << message_id_ << ": recipient is empty";
+        spdlog::error("{}: recipient is empty", message_id_);
         return SMFIS_REJECT;
     }
 
     const std::string &rcpt = args[0];
-    L_INFO << message_id_ << ": to=" << rcpt;
+    spdlog::info("{}: to={}", message_id_, rcpt);
     std::shared_ptr<cfg::encryption_section_handler> gs = cfg::cfg::inst().find_match(rcpt);
 
     if (gs == nullptr) {
         // recipient doesn't match any section, hence reject it
         set_reply("550", "5.7.1", "recipient does not match any configuration section");
-        L_WARN << message_id_ << ": recipient " << rcpt << " was not found in any section, rejecting";
+        spdlog::warn("{}: recipient {} was not found in any section, rejecting", message_id_, rcpt);
         return SMFIS_REJECT;
     }
 
-    L_DEBUG << message_id_ << ": recipient " << rcpt << " was found in section " << gs->name();
+    spdlog::debug("{}: recipient {} was found in section {}", message_id_, rcpt, gs->name());
     email_context &context = get_context(gs);
 
     if (context.body_handler->has_public_key(rcpt)) {
-        L_DEBUG << message_id_ << ": found public key in local keyring for " << rcpt;
+        spdlog::debug("{}: found public key in local keyring for {}", message_id_, rcpt);
         context.recipients[rcpt] = true;
     } else {
-        L_DEBUG << message_id_ << ": couldn't find public key in local keyring for " << rcpt;
+        spdlog::debug("{}: couldn't find public key in local keyring for {}", message_id_, rcpt);
         switch (gs->get<cfg::key_not_found_policy_enum>("key_not_found_policy")) {
         case cfg::discard:
-            L_WARN << message_id_ << ": discarding recipient " << rcpt;
+            spdlog::warn("{}: discarding recipient {}", message_id_, rcpt);
             context.recipients[rcpt] = false;
             break;
 
@@ -78,17 +78,17 @@ sfsistat milter_message::on_envrcpt(const std::vector<std::string> &args)
             // XXX: maybe the key importing should be done in another place to
             // avoid delays or timeouts in this part of the MTA-to-MTA communication
             if (context.body_handler->import_public_key(rcpt)) {
-                L_INFO << message_id_ << ": imported new public key for " << rcpt;
+                spdlog::info("{}: imported new public key for {}", message_id_, rcpt);
                 context.recipients[rcpt] = true;
             } else {
-                L_WARN << message_id_ << ": failed to import new public key for " << rcpt;
+                spdlog::warn("{}: failed to import new public key for {}", message_id_, rcpt);
                 context.recipients[rcpt] = false;
             }
             break;
 
         case cfg::reject:
             set_reply("550", "5.7.1", "Recipient does not have a public key");
-            L_WARN << message_id_ << ": rejected recipient " << rcpt << " due to missing public key";
+            spdlog::warn("{}: rejected recipient {} due to missing public key", message_id_, rcpt);
             return SMFIS_REJECT;
         }
     }
@@ -100,7 +100,7 @@ sfsistat milter_message::on_envrcpt(const std::vector<std::string> &args)
 
 sfsistat milter_message::on_data()
 {
-    L_DEBUG << message_id_ << ": data";
+    spdlog::debug("{}: data", message_id_);
 
     unsigned int rcpt_count = 0;
     for (auto &[_, context]: contexts_) {
@@ -114,7 +114,7 @@ sfsistat milter_message::on_data()
     }
 
     if (rcpt_count == 0) {
-        L_WARN << message_id_ << ": no recipient matches the existing configuration sections, rejecting email";
+        spdlog::warn("{}: no recipient matches the existing configuration sections, rejecting email", message_id_);
         return SMFIS_REJECT;
     }
 
@@ -124,7 +124,7 @@ sfsistat milter_message::on_data()
 
 sfsistat milter_message::on_header(const std::string &headerf, const std::string &headerv)
 {
-    L_DEBUG << message_id_ << ": header " << headerf << "=" << headerv;
+    spdlog::debug("{}: header {}={}", message_id_, headerf, headerv);
 
     // XXX: debugging
     headers_ += headerf + ": " + headerv + "\r\n";
@@ -145,14 +145,14 @@ sfsistat milter_message::on_header(const std::string &headerf, const std::string
 
 sfsistat milter_message::on_eoh()
 {
-    L_DEBUG << message_id_ << ": end-of-headers";
+    spdlog::debug("{}: end-of-headers", message_id_);
     return SMFIS_CONTINUE;
 }
 
 
 sfsistat milter_message::on_body(const std::string &body)
 {
-    L_DEBUG << message_id_ << ": body size=" << body.size();
+    spdlog::debug("{}: body size={}", message_id_, body.size());
     body_ += body;
     return SMFIS_CONTINUE;
 }
@@ -160,24 +160,24 @@ sfsistat milter_message::on_body(const std::string &body)
 
 sfsistat milter_message::on_eom()
 {
-    L_DEBUG << message_id_ << ": end-of-message";
+    spdlog::debug("{}: end-of-message", message_id_);
 
     utils::dump_email dmp("dump", "crash-", connection_id_, message_id_, headers_, body_, true);
 
     try {
         if (!signature_header_.empty()) {
             if (verify_signature()) {
-                L_INFO << message_id_ << ": signature header verifies, allowing email to pass";
+                spdlog::info("{}: signature header verifies, allowing email to pass", message_id_);
                 return SMFIS_CONTINUE;
             } else {
-                L_ERR << message_id_ << ": rejecting email due to failure while verifying the signature";
+                spdlog::error("{}: rejecting email due to failure while verifying the signature", message_id_);
                 set_reply("550", nullptr, "failed to verify the signature");
                 return SMFIS_REJECT;
             }
         }
     } catch (const std::exception &e) {
         // TODO: std::runtime_error should be replaced with something more specific
-        L_ERR << message_id_ << ": rejecting email due to failure while verifying the signature: " << e.what();
+        spdlog::error("{}: rejecting email due to failure while verifying the signature: {}", message_id_, e.what());
         set_reply("550", nullptr, "failed to verify the signature");
         return SMFIS_REJECT;
     }
@@ -189,10 +189,10 @@ sfsistat milter_message::on_eom()
 
         bool milter_body_replaced = false;
         for (auto &[section, ctx]: contexts_) {
-            L_DEBUG << message_id_ << ": processing section " << section;
+            spdlog::debug("{}: processing section {}", message_id_, section);
 
             if (ctx.good_recipients.empty()) {
-                L_DEBUG << message_id_ << ": section " << section << " has no recipients left";
+                spdlog::debug("{}: section {} has no recipients left", message_id_, section);
                 continue;
             }
 
@@ -201,7 +201,7 @@ sfsistat milter_message::on_eom()
 
             int i = 1;
             for (const auto &r: ctx.body_handler->failed_recipients()) {
-                L_DEBUG << message_id_ << ": failed key #" << i << " = " << r;
+                spdlog::debug("{}: failed key #{} = {}", message_id_, i, r);
                 ++i;
             }
 
@@ -259,9 +259,8 @@ sfsistat milter_message::on_eom()
                 // same recipients once more.
                 int failed_count = cm.perform();
                 if (failed_count != 0) {
-                    L_WARN << message_id_ << ": " << failed_count << " out of " << smtp_work_items.size()
-                           << " emails failed during delivery, email is rejected temporarily";
-
+                    spdlog::warn("{}: {} out of {} emails failed during delivery, email is rejected temporarily",
+                                 message_id_, failed_count, smtp_work_items.size());
                     return SMFIS_TEMPFAIL;
                 }
             } catch (const std::runtime_error &e) {
@@ -269,16 +268,16 @@ sfsistat milter_message::on_eom()
             }
         }
     } catch (const boost::exception &e) {
-        L_ERR << message_id_ << ": boost exception caught: " << boost::diagnostic_information(e);
+        spdlog::error("{}: boost exception caught: {}", message_id_, boost::diagnostic_information(e));
         utils::dump_email dmp("dump", "exception-", connection_id_, message_id_, headers_, body_, false);
         return SMFIS_TEMPFAIL;
     } catch (const std::exception &e) {
-        L_ERR << message_id_ << ": exception caught: " << e.what();
+        spdlog::error("{}: exception caught: {}", message_id_, e.what());
         utils::dump_email dmp("dump", "exception-", connection_id_, message_id_, headers_, body_, false);
         return SMFIS_TEMPFAIL;
     } catch (...) {
         utils::dump_email dmp("dump", "exception-", connection_id_, message_id_, headers_, body_, false);
-        L_DEBUG << message_id_ << ": unknown exception caught";
+        spdlog::debug("{}: unknown exception caught", message_id_);
         return SMFIS_TEMPFAIL;
     }
 
@@ -288,7 +287,7 @@ sfsistat milter_message::on_eom()
 
 sfsistat milter_message::on_abort()
 {
-    L_DEBUG << message_id_ << ": aborted";
+    spdlog::debug("{}: aborted", message_id_);
     return SMFIS_CONTINUE;
 }
 
@@ -306,9 +305,9 @@ void milter_message::replace_headers(const headers_type &headers)
         }
 
         if (h.value.empty())
-            L_DEBUG << message_id_ << ": removed header " << h.name;
+            spdlog::debug("{}: removed header {}", message_id_, h.name);
         else
-            L_DEBUG << message_id_ << ": updated header " << h.name << ": " << h.value;
+            spdlog::debug("{}: updated header {}: {}", message_id_, h.name, h.value);
     }
 
     // Strip headers per configuration
@@ -319,7 +318,7 @@ void milter_message::replace_headers(const headers_type &headers)
             continue;
         if (smfi_chgheader(smfictx_, const_cast<char *>(header.c_str()), 1, nullptr) == MI_FAILURE)
             throw milter_exception("failed to remove header " + header);
-        L_DEBUG << message_id_ << ": removed header \"" << header << "\"";
+        spdlog::debug("{}: removed header \"{}\"", message_id_, header);
     }
 }
 
@@ -339,7 +338,7 @@ bool milter_message::verify_signature()
     signature.seek(0, data_buffer::SET);
 
     if (c.verify(signature, body)) {
-        L_DEBUG << message_id_ << ": signature header verifies, removing " << x_gwmilter_signature << " header";
+        spdlog::debug("{}: signature header verifies, removing {} header", message_id_, x_gwmilter_signature);
 
         if (smfi_chgheader(smfictx_, const_cast<char *>(x_gwmilter_signature.c_str()), 1, nullptr) == MI_FAILURE)
             throw milter_exception("failed to remove header " + x_gwmilter_signature);
@@ -355,7 +354,7 @@ void milter_message::sign(const std::set<std::string> &keys, const std::string &
 {
     using namespace egpgcrypt;
 
-    L_DEBUG << message_id_ << ": signing message size=" << in.size();
+    spdlog::debug("{}: signing message size={}", message_id_, in.size());
 
     // always use PGP to sign
     crypto c(GPGME_PROTOCOL_OpenPGP);
@@ -444,7 +443,7 @@ void milter_message::update_milter_recipients(const std::set<std::string> &good_
     for (const auto &r: recipients_all_) {
         if (good_recipients.find(r) == good_recipients.end()) {
             smfi_delrcpt(smfictx_, const_cast<char *>(r.c_str()));
-            L_DEBUG << message_id_ << ": removed recipient " << r << " from milter";
+            spdlog::debug("{}: removed recipient {} from milter", message_id_, r);
         }
     }
 }

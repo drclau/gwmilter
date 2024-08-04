@@ -15,9 +15,9 @@ sfsistat xxfi_connect(SMFICTX *ctx, char *hostname, _SOCK_ADDR *hostaddr)
 
         return m->on_connect(hostname, hostaddr);
     } catch (const std::exception &e) {
-        L_ERR << "std::exception caught: " << e.what();
+        spdlog::error("std::exception caught: {}", e.what());
     } catch (...) {
-        L_ERR << "unknown exception caught";
+        spdlog::error("unknown exception caught");
     }
 
     return SMFIS_TEMPFAIL;
@@ -30,9 +30,9 @@ sfsistat xxfi_helo(SMFICTX *ctx, char *helohost)
         if (auto *m = static_cast<milter_connection *>(smfi_getpriv(ctx)))
             return m->on_helo(helohost);
     } catch (const std::exception &e) {
-        L_ERR << "std::exception caught: " << e.what();
+        spdlog::error("std::exception caught: {}", e.what());
     } catch (...) {
-        L_ERR << "unknown exception caught";
+        spdlog::error("unknown exception caught");
     }
 
     return SMFIS_TEMPFAIL;
@@ -51,9 +51,9 @@ sfsistat xxfi_close(SMFICTX *ctx)
 
         return ret;
     } catch (const std::exception &e) {
-        L_ERR << "std::exception caught: " << e.what();
+        spdlog::error("std::exception caught: {}", e.what());
     } catch (...) {
-        L_ERR << "unknown exception caught";
+        spdlog::error("unknown exception caught");
     }
 
     return SMFIS_TEMPFAIL;
@@ -71,9 +71,9 @@ sfsistat xxfi_envfrom(SMFICTX *ctx, char **argv)
             return m->get_message()->on_envfrom(args);
         }
     } catch (const std::exception &e) {
-        L_ERR << "std::exception caught: " << e.what();
+        spdlog::error("std::exception caught: {}", e.what());
     } catch (...) {
-        L_ERR << "unknown exception caught";
+        spdlog::error("unknown exception caught");
     }
 
     return SMFIS_TEMPFAIL;
@@ -91,9 +91,9 @@ sfsistat xxfi_envrcpt(SMFICTX *ctx, char **argv)
             return m->get_message()->on_envrcpt(args);
         }
     } catch (const std::exception &e) {
-        L_ERR << "std::exception caught: " << e.what();
+        spdlog::error("std::exception caught: {}", e.what());
     } catch (...) {
-        L_ERR << "unknown exception caught";
+        spdlog::error("unknown exception caught");
     }
 
     return SMFIS_TEMPFAIL;
@@ -106,9 +106,9 @@ sfsistat xxfi_data(SMFICTX *ctx)
         if (auto *m = static_cast<milter_connection *>(smfi_getpriv(ctx)))
             return m->get_message()->on_data();
     } catch (const std::exception &e) {
-        L_ERR << "std::exception caught: " << e.what();
+        spdlog::error("std::exception caught: {}", e.what());
     } catch (...) {
-        L_ERR << "unknown exception caught";
+        spdlog::error("unknown exception caught");
     }
 
     return SMFIS_TEMPFAIL;
@@ -121,9 +121,9 @@ sfsistat xxfi_unknown(SMFICTX *ctx, const char *arg)
         if (auto *m = static_cast<milter_connection *>(smfi_getpriv(ctx)))
             return m->on_unknown(arg);
     } catch (const std::exception &e) {
-        L_ERR << "std::exception caught: " << e.what();
+        spdlog::error("std::exception caught: {}", e.what());
     } catch (...) {
-        L_ERR << "unknown exception caught";
+        spdlog::error("unknown exception caught");
     }
 
     return SMFIS_TEMPFAIL;
@@ -136,9 +136,9 @@ sfsistat xxfi_header(SMFICTX *ctx, char *headerf, char *headerv)
         if (auto *m = static_cast<milter_connection *>(smfi_getpriv(ctx)))
             return m->get_message()->on_header(headerf, headerv);
     } catch (const std::exception &e) {
-        L_ERR << "std::exception caught: " << e.what();
+        spdlog::error("std::exception caught: {}", e.what());
     } catch (...) {
-        L_ERR << "unknown exception caught";
+        spdlog::error("unknown exception caught");
     }
 
     return SMFIS_TEMPFAIL;
@@ -151,9 +151,9 @@ sfsistat xxfi_eoh(SMFICTX *ctx)
         if (auto *m = static_cast<milter_connection *>(smfi_getpriv(ctx)))
             return m->get_message()->on_eoh();
     } catch (const std::exception &e) {
-        L_ERR << "std::exception caught: " << e.what();
+        spdlog::error("std::exception caught: {}", e.what());
     } catch (...) {
-        L_ERR << "unknown exception caught";
+        spdlog::error("unknown exception caught");
     }
 
     return SMFIS_TEMPFAIL;
@@ -168,9 +168,9 @@ sfsistat xxfi_body(SMFICTX *ctx, unsigned char *bodyp, size_t len)
             return m->get_message()->on_body(body);
         }
     } catch (const std::exception &e) {
-        L_ERR << "std::exception caught: " << e.what();
+        spdlog::error("std::exception caught: {}", e.what());
     } catch (...) {
-        L_ERR << "unknown exception caught";
+        spdlog::error("unknown exception caught");
     }
 
     return SMFIS_TEMPFAIL;
@@ -183,9 +183,9 @@ sfsistat xxfi_eom(SMFICTX *ctx)
         if (auto *m = static_cast<milter_connection *>(smfi_getpriv(ctx)))
             return m->on_eom();
     } catch (const std::exception &e) {
-        L_ERR << "std::exception caught: " << e.what();
+        spdlog::error("std::exception caught: {}", e.what());
     } catch (...) {
-        L_ERR << "unknown exception caught";
+        spdlog::error("unknown exception caught");
     }
 
     return SMFIS_TEMPFAIL;
@@ -198,9 +198,9 @@ sfsistat xxfi_abort(SMFICTX *ctx)
         if (auto *m = static_cast<milter_connection *>(smfi_getpriv(ctx)))
             return m->on_abort();
     } catch (const std::exception &e) {
-        L_ERR << "std::exception caught: " << e.what();
+        spdlog::error("std::exception caught: {}", e.what());
     } catch (...) {
-        L_ERR << "unknown exception caught";
+        spdlog::error("unknown exception caught");
     }
 
     return SMFIS_TEMPFAIL;

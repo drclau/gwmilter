@@ -2,7 +2,6 @@
 #include "cfg/cfg.hpp"
 #include "logger/logger.hpp"
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <fstream>
 
@@ -62,10 +61,9 @@ void pdf_body_handler::encrypt(const recipients_type &recipients, std::string &o
     // a reference to a class variable
     const string &body = unpacker.body_text();
 
-    L_DEBUG << "PDF settings: pdf_font_path=\"" << settings_->get<string>("pdf_font_path")
-            << "\""
-               " pdf_font_size="
-            << settings_->get<float>("pdf_font_size") << " pdf_margin=" << settings_->get<float>("pdf_margin");
+    spdlog::debug("PDF settings: pdf_font_path=\"{}\", pdf_font_size={}, pdf_margin={})",
+                  settings_->get<string>("pdf_font_path"), settings_->get<float>("pdf_font_size"),
+                  settings_->get<float>("pdf_margin"));
     epdf pdf(settings_->get<string>("pdf_font_path"), true, settings_->get<float>("pdf_font_size"),
              settings_->get<float>("pdf_margin"));
 
@@ -74,7 +72,7 @@ void pdf_body_handler::encrypt(const recipients_type &recipients, std::string &o
 
     if (!body.empty()) {
         pdf.add_text(body);
-        L_DEBUG << "PDF body set from email; size=" << body.size();
+        spdlog::debug("PDF body set from email; size={}", body.size());
     } else if (settings_ && !settings_->get<string>("pdf_main_page_if_missing").empty()) {
         std::ifstream ifs(settings_->get<string>("pdf_main_page_if_missing").c_str());
         for (string line; getline(ifs, line);) {
@@ -83,9 +81,9 @@ void pdf_body_handler::encrypt(const recipients_type &recipients, std::string &o
             pdf.add_text(line);
         }
 
-        L_DEBUG << "PDF body set from file (could not get from email)";
+        spdlog::debug("PDF body set from file (could not get from email)");
     } else {
-        L_DEBUG << "PDF body left empty";
+        spdlog::debug("PDF body left empty");
     }
 
     const parts_t &parts = unpacker.parts();
