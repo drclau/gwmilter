@@ -2,11 +2,11 @@
 #include "logger/logger.hpp"
 #include <arpa/inet.h>
 #include <libmilter/mfapi.h>
+#include <netinet/in.h>
 #include <string>
+#include <sys/socket.h>
 
 namespace gwmilter {
-
-using std::make_shared;
 
 sfsistat milter_connection::on_connect(const std::string &hostname, _SOCK_ADDR *hostaddr)
 {
