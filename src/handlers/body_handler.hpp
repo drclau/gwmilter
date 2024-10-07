@@ -110,6 +110,9 @@ protected:
     void postprocess() override;
 
 private:
+    static std::string read_file(const std::string &filename);
+
+private:
     epdfcrypt::memory_mime_stream body_;
     std::string main_boundary_;
     std::string pdf_attachment_;
