@@ -127,7 +127,7 @@ public:
 private:
     void process_pdf_attachment(const std::string &optval);
     void process_pdf_password(const std::string &optval);
-    void process_pdf_body_replacement(const std::string &optval);
+    void process_email_body_replacement(const std::string &optval);
     void process_pdf_main_page_if_missing(const std::string &optval);
     void process_pdf_font_path(const std::string &optval);
     void process_pdf_font_size(const std::string &optval);

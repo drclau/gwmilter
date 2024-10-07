@@ -352,7 +352,11 @@ void pgpsmime_section_handler::process_key_not_found_policy(const std::string &o
 pdf_section_handler::pdf_section_handler(const std::string &name, boost::property_tree::ptree &pt)
     : encryption_section_handler(name, pt)
 {
+    track_mandatory_["email_body_replacement"] = false;
+    track_mandatory_["pdf_main_page_if_missing"] = false;
+
     defaults_["pdf_attachment"] = "email.pdf";
+    defaults_["pdf_font_path"] = "";
     defaults_["pdf_font_size"] = "10.0";
     defaults_["pdf_margin"] = "10.0";
 
@@ -360,8 +364,8 @@ pdf_section_handler::pdf_section_handler(const std::string &name, boost::propert
         process_pdf_attachment(std::forward<decltype(arg)>(arg));
     };
     option_handlers_["pdf_password"] = [this](auto &&arg) { process_pdf_password(std::forward<decltype(arg)>(arg)); };
-    option_handlers_["pdf_body_replacement"] = [this](auto &&arg) {
-        process_pdf_body_replacement(std::forward<decltype(arg)>(arg));
+    option_handlers_["email_body_replacement"] = [this](auto &&arg) {
+        process_email_body_replacement(std::forward<decltype(arg)>(arg));
     };
     option_handlers_["pdf_main_page_if_missing"] = [this](auto &&arg) {
         process_pdf_main_page_if_missing(std::forward<decltype(arg)>(arg));
@@ -388,14 +392,14 @@ void pdf_section_handler::process_pdf_password(const std::string &optval)
 }
 
 
-void pdf_section_handler::process_pdf_body_replacement(const std::string &optval)
+void pdf_section_handler::process_email_body_replacement(const std::string &optval)
 {
     if (!optval.empty() && !file_test(optval))
         throw cfg_exception(
-            fmt::format(R"(section "{}", invalid value for "pdf_body_replacement" ({}): file does not exist)",
+            fmt::format(R"(section "{}", invalid value for "email_body_replacement" ("{}"): file does not exist)",
                         section_name_, optval));
 
-    options_["pdf_body_replacement"] = optval;
+    options_["email_body_replacement"] = optval;
 }
 
 
@@ -403,7 +407,7 @@ void pdf_section_handler::process_pdf_main_page_if_missing(const std::string &op
 {
     if (!optval.empty() && !file_test(optval))
         throw cfg_exception(
-            fmt::format(R"(section "{}", invalid value for "pdf_main_page_if_missing" ({}): file does not exist)",
+            fmt::format(R"(section "{}", invalid value for "pdf_main_page_if_missing" ("{}"): file does not exist)",
                         section_name_, optval));
 
     options_["pdf_main_page_if_missing"] = optval;
@@ -412,6 +416,10 @@ void pdf_section_handler::process_pdf_main_page_if_missing(const std::string &op
 
 void pdf_section_handler::process_pdf_font_path(const std::string &optval)
 {
+    if (!optval.empty() && !file_test(optval))
+        throw cfg_exception(fmt::format(
+            R"(section "{}", invalid value for "pdf_font_path" ("{}"): file does not exist)", section_name_, optval));
+
     options_["pdf_font_path"] = optval;
 }
 

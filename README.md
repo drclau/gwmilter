@@ -8,7 +8,7 @@ It uses [Milter API](https://en.wikipedia.org/wiki/Milter) to integrate with MTA
 It supports multiple encryption protocols:
 * [PGP](https://en.wikipedia.org/wiki/Pretty_Good_Privacy)
 * [S/MIME](https://en.wikipedia.org/wiki/S/MIME)
-* [PDF/A encryption](https://en.wikipedia.org/wiki/PDF/A)
+* [PDF encryption](https://en.wikipedia.org/wiki/PDF/A)
 
 PGP and S/MIME support relies on a local installation of [GnuPG](https://gnupg.org) for keys management.
 
@@ -29,6 +29,7 @@ PGP and S/MIME support relies on a local installation of [GnuPG](https://gnupg.o
 * glib
 * libmilter
 * libcurl
+* spdlog
 * PkgConfig
 
 ## How to build

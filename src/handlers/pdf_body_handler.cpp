@@ -12,11 +12,11 @@ using std::string;
 pdf_body_handler::pdf_body_handler(const std::shared_ptr<cfg::encryption_section_handler> &settings)
     : main_boundary_{generate_boundary(30)}, settings_{settings}
 {
-    if (settings_ && !settings_->get<string>("pdf_attachment").empty())
-        pdf_attachment_ = settings_->get<string>("pdf_attachment");
-    else
-        // default value
-        pdf_attachment_ = "email.pdf";
+    if (!settings_)
+        throw std::runtime_error("PDF encryption settings are not provided");
+
+    const auto &attachment = settings_->get<string>("pdf_attachment");
+    pdf_attachment_ = attachment.empty() ? "email.pdf" : attachment;
 }
 
 
@@ -56,10 +56,7 @@ void pdf_body_handler::encrypt(const recipients_type &recipients, std::string &o
     body_.flush();
     mime_unpacker unpacker(body_);
     unpacker.unpack();
-
-    // this is safe, because body_text() returns
-    // a reference to a class variable
-    const string &body = unpacker.body_text();
+    string body = unpacker.body_text();
 
     spdlog::debug("PDF settings: pdf_font_path=\"{}\", pdf_font_size={}, pdf_margin={})",
                   settings_->get<string>("pdf_font_path"), settings_->get<float>("pdf_font_size"),
@@ -67,27 +64,20 @@ void pdf_body_handler::encrypt(const recipients_type &recipients, std::string &o
     epdf pdf(settings_->get<string>("pdf_font_path"), true, settings_->get<float>("pdf_font_size"),
              settings_->get<float>("pdf_margin"));
 
-    if (settings_ && !settings_->get<string>("pdf_password").empty())
-        pdf.set_password(settings_->get<string>("pdf_password"));
+    if (const auto password = settings_->get<string>("pdf_password"); !password.empty())
+        pdf.set_password(password);
 
     if (!body.empty()) {
+        spdlog::debug("PDF body created from email; size={}", body.size());
         pdf.add_text(body);
-        spdlog::debug("PDF body set from email; size={}", body.size());
-    } else if (settings_ && !settings_->get<string>("pdf_main_page_if_missing").empty()) {
-        std::ifstream ifs(settings_->get<string>("pdf_main_page_if_missing").c_str());
-        for (string line; getline(ifs, line);) {
-            line += "\r\n";
-            // TODO: should I call pdf.add_line() here?
-            pdf.add_text(line);
-        }
-
+    } else if (const auto filename = settings_->get<string>("pdf_main_page_if_missing"); !filename.empty()) {
         spdlog::debug("PDF body set from file (could not get from email)");
-    } else {
+        pdf.add_text(pdf_body_handler::read_file(filename));
+    } else
         spdlog::debug("PDF body left empty");
-    }
 
-    const parts_t &parts = unpacker.parts();
-    for (const auto &part: parts)
+    // attach the original unpacked email parts
+    for (const auto &part: unpacker.parts())
         pdf.attach(part);
 
     // clang-format off
@@ -99,12 +89,9 @@ void pdf_body_handler::encrypt(const recipients_type &recipients, std::string &o
         "\r\n";
     // clang-format on
 
-    if (settings_ && !settings_->get<string>("pdf_body_replacement").empty()) {
-        std::ifstream ifs_body(settings_->get<string>("pdf_body_replacement").c_str());
-        for (string line; getline(ifs_body, line);) {
-            out += line;
-            out += "\r\n";
-        }
+    if (const auto filename = settings_->get<string>("email_body_replacement"); !filename.empty()) {
+        spdlog::debug("email body replaced");
+        out += pdf_body_handler::read_file(filename);
     }
 
     // clang-format off
@@ -170,5 +157,21 @@ bool pdf_body_handler::import_public_key(const std::string &recipient)
     // NOTE: the notion of public key does not apply to PDF encryption
     return true;
 }
+
+
+std::string pdf_body_handler::read_file(const std::string &filename)
+{
+    std::ifstream file(filename, std::ios::binary);
+    if (!file)
+        throw std::runtime_error("Unable to open file: " + filename);
+
+    std::stringstream content;
+    string line;
+    while (std::getline(file, line))
+        content << line << "\r\n";
+   
+    return content.str();
+}
+
 
 } // namespace gwmilter
