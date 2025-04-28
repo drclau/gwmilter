@@ -20,7 +20,7 @@ milter::milter(const std::string &socket, unsigned long flags, int timeout, int 
         throw milter_exception("smfi_setdbg failed");
 
     smfiDesc smfilter = {
-        const_cast<char *>("gwfilter"), // filter name
+        const_cast<char *>("gwmilter"), // filter name
         SMFI_VERSION, // version code -- do not change
         flags, // flags
         xxfi_connect, // connection info filter
