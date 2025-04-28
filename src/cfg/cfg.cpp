@@ -82,6 +82,7 @@ general_section_handler::general_section_handler(const std::string &name, boost:
     defaults_["smtp_server"] = "smtp://127.0.0.1";
     defaults_["smtp_server_timeout"] = "-1";
     defaults_["dump_email_on_panic"] = "false";
+    defaults_["strip_headers"] = "";
 
     // set processors for general options
     option_handlers_["daemonize"] = [this](auto &&arg) { process_daemonize(std::forward<decltype(arg)>(arg)); };
@@ -319,6 +320,8 @@ pgpsmime_section_handler::pgpsmime_section_handler(const std::string &name, boos
 {
     using boost::lexical_cast;
     using std::string;
+
+    track_mandatory_["key_not_found_policy"] = false;
 
     option_handlers_["key_not_found_policy"] = [this](auto &&arg) {
         process_key_not_found_policy(std::forward<decltype(arg)>(arg));
