@@ -28,8 +28,10 @@ static void print_help()
 
 void drop_privileges(const std::string &user_name, const std::string &group_name)
 {
-    if (getuid() != 0)
+    if (int uid = getuid(); uid != 0) {
+        spdlog::warn("Not dropping privileges as uid is {}, not 0", uid);
         return;
+    }
 
     if (!group_name.empty()) {
         errno = 0;
