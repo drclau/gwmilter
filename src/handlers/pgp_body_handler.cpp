@@ -81,10 +81,4 @@ void pgp_body_handler::encrypt(const std::set<std::string> &recipients, std::str
     out.append("\r\n--" + main_boundary_ + "--\r\n");
 }
 
-
-bool pgp_body_handler::convert_to_multipart() const
-{
-    return true;
-}
-
 } // namespace gwmilter

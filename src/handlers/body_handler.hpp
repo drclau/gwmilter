@@ -37,9 +37,6 @@ protected:
     // Content-* headers
     std::string extract_content_headers(headers_type &content_headers);
 
-    void make_multipart(const std::string &content_type);
-    virtual bool convert_to_multipart() const;
-
     virtual void preprocess();
     virtual void postprocess();
 
@@ -74,9 +71,6 @@ public:
 
     headers_type get_headers() override;
     void encrypt(const recipients_type &recipients, std::string &out) override;
-
-protected:
-    bool convert_to_multipart() const override;
 
 private:
     std::string main_boundary_;

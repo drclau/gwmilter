@@ -38,9 +38,6 @@ void body_handler_base::preprocess()
     headers_type content_headers;
     std::string content_type = extract_content_headers(content_headers);
 
-    if (convert_to_multipart())
-        make_multipart(content_type);
-
     // append Content-* headers to body
     for (const auto &h: content_headers)
         write(h.name + ": " + h.value + "\r\n");
@@ -88,32 +85,6 @@ std::string body_handler_base::extract_content_headers(headers_type &content_hea
     }
 
     return content_type;
-}
-
-
-void body_handler_base::make_multipart(const std::string &content_type)
-{
-    if (!boost::iequals(content_type.substr(0, 10), "multipart/")) {
-        // NOTE: this is a special case.
-        // If Content-Type is not multipart/*, wrap the body
-        // in multipart/mixed.
-        multipart_boundary_ = generate_boundary(30);
-        // clang-format off
-        write(
-                "Content-Type: multipart/mixed;\r\n"
-                "\tboundary=\"" + multipart_boundary_ + "\"\r\n"
-                "\r\n"
-                "--" + multipart_boundary_ + "\r\n");
-        // clang-format on
-
-        spdlog::debug("Content converted to multipart/mixed");
-    }
-}
-
-
-bool body_handler_base::convert_to_multipart() const
-{
-    return false;
 }
 
 
