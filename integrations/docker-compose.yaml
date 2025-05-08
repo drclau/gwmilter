@@ -1,0 +1,104 @@
+services:
+  gwmilter:
+    build:
+      context: ..
+      dockerfile: integrations/gwmilter/Dockerfile
+    image: gwmilter:latest
+    volumes:
+      - ./gwmilter/config.ini.template:/app/config.ini.template:ro
+      - gwmilter-gnupg:/app/gnupg
+      - ./keys:/app/keys:ro # Mount the generated keys as read-only
+    environment:
+      - SIGNING_KEY_NAME=gwmilter-signing-key
+      - GWMILTER_USER=gwmilter
+      - GWMILTER_GROUP=gwmilter
+      - MILTER_SOCKET=inet:10025@0.0.0.0
+      - SMTP_SERVER=smtp://postfix-gw:25
+      - CLEAN_PGP_KEYS_ON_START=true
+      # - GPGME_DEBUG=4:/app/gnupg/gpgme.log
+    ports:
+      - "10025:10025"
+    networks:
+      - gwmilter_network
+    depends_on:
+      key-generator:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "10025" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  key-generator:
+    build:
+      context: ..
+      dockerfile: integrations/gwmilter/Dockerfile
+    image: gwmilter:latest
+    restart: "no"
+    volumes:
+      - ./keys:/app/keys:rw
+      - ./key_list.txt:/app/key_list.txt:ro
+      - ./gwmilter/key-generator.sh:/app/key-generator.sh:ro
+    environment:
+      - SIGNING_KEY_NAME=gwmilter-signing-key
+    entrypoint: [ "/bin/sh" ]
+    command: [ "/app/key-generator.sh" ]
+    healthcheck:
+      test: [ "CMD-SHELL", "[ -f /app/keys/.keys_generated ]" ]
+      interval: 1s
+      timeout: 3s
+      retries: 10
+      start_period: 2s
+
+  postfix-gw:
+    build:
+      context: ..
+      dockerfile: integrations/postfix/Dockerfile
+    image: postfix-gw:latest
+    user: "0:0"
+    volumes:
+      - ./postfix/main.cf.template:/etc/postfix/main.cf.template:ro
+    environment:
+      - SMTPD_MILTERS=inet:gwmilter:10025
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+    networks:
+      - gwmilter_network
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "25" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  mailpit:
+    image: axllent/mailpit:latest
+    environment:
+      - MP_VERBOSE=true
+      - MP_ENABLE_CHAOS=false
+      - MP_POP3_AUTH=user:password
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+      - "1110:1110"
+    networks:
+      - gwmilter_network
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "8025" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  gwmilter-gnupg:
+
+
+networks:
+  gwmilter_network:
+    driver: bridge

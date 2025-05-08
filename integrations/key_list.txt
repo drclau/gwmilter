@@ -1,0 +1,8 @@
+# key_list.txt — Define email[:expiration] entries for PGP key gen (lines starting with ‘#’ are ignored)
+#
+# Format: email[:expiration]
+#   • Expiration: GnuPG durations (1y, 6m, 30d…), “0”/“never” for no expiry, or ISO timestamps
+#     (use a past ISO date to generate an already-expired key). Default = 1y.
+
+user1-pgp@example.com:1y
+user2-pgp@example.com:20250101T000000

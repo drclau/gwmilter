@@ -1,0 +1,20 @@
+# Build directories
+/build/
+/cmake-build-*/
+/.cache/
+
+# Integrations
+# /integrations/
+
+# IDEs
+/.idea/
+/.vs/
+/.vscode/
+
+# OS
+.DS_Store
+
+# misc.
+.gitignore
+.dockerignore
+*~

@@ -1,0 +1,100 @@
+# NOTE: do not use quotes (") around values in this file.
+
+[general]
+# Start in daemon / background mode.
+daemonize = false
+
+# When started as root (uid=0), drop privileges to the specified user and group.
+# These options are ignored when the service is started as a non-root user (uid != 0).
+user = gwmilter
+group = gwmilter
+
+# Logger configuration
+# Supported logger types are `console` and `syslog`.
+log_type = console
+# log_priority applies to both `console` and `syslog` loggers,
+# and follows the same pattern as syslog priorities.
+log_priority = debug
+# log_facility is used only for the `syslog` logger.
+log_facility = mail
+
+# Milter connection details
+# <protocol>:<port>@<hostname>
+# e.g., inet:10025@localhost
+milter_socket = ${MILTER_SOCKET}
+# Timeout
+milter_timeout = 180
+
+# SMTP address for re-injecting emails into the MTA when the email has recipients
+# that match more than one configuration section.
+# e.g., smtp://localhost:25
+smtp_server = ${SMTP_SERVER}
+# Timeout
+smtp_server_timeout = 180
+
+# When enabled, emails are dumped to the filesystem when a panic condition occurs
+# (i.e. crash or exceptions during processing).
+# Note that emails are written to the filesystem at SMTP end-of-message, and are deleted
+# after the message is processed, so that the email is available on the filesystem in
+# the event of a crash.
+dump_email_on_panic = false
+
+# Re-injected emails are cryptographically signed. This option is mandatory,
+# and it specifies the name of the PGP key that must exist in the local
+# GnuPG database. The private part of the key is used for signing.
+#
+# It is recommended to use a dedicated key for this purpose.
+# To generate a new key, you can use the following:
+#
+# `gpg --pinentry-mode loopback --passphrase '' --quick-gen-key gwmilter-internal-signing-key default sign never`
+signing_key = ${SIGNING_KEY_NAME}
+
+# Headers storing any type of cryptographic signature or checksum
+# are invalidated when the headers and/or body are modified.
+# gwmilter can remove such headers before allowing the email to pass through.
+# Specify the headers as a comma-separated list.
+#strip_headers = DKIM-Signature
+
+# --- EMAIL ENCRYPTION SETTINGS ---
+# Examples of encryption settings for each supported protocol follow.
+# Section names are arbitrary, except for "general" which is reserved.
+
+[pgp]
+# Comma-separated list of regular expressions for matching email recipients.
+# Leading and trailing spaces are trimmed.
+match = .*-pgp@example.com
+
+# Select the encryption protocol that is applied in this section.
+encryption_protocol = pgp
+
+# Sets the policy for handling recipients who do not have a corresponding key.
+# Possible values are:
+# - discard: the recipient is silently discarded.
+# - reject: the recipient is rejected with a 5xx error.
+# - retrieve: attempt to retrieve the key from a keyserver. Reject the recipient if the key is not found.
+key_not_found_policy = retrieve
+
+[smime]
+match = user-smime@example.com
+encryption_protocol = smime
+# Same as for pgp, except 'retrieve' is not supported.
+key_not_found_policy = reject
+
+[pdf]
+match = user-pdf@example.com
+encryption_protocol = pdf
+# The filename of the PDF attachment.
+pdf_attachment = encrypted_email.pdf
+# The password set for the PDF file.
+pdf_password = password
+email_body_replacement = data/email_body_replacement.txt
+# Text file to be used as the source for the main page of the PDF,
+# when the content cannot be extracted from the email.
+pdf_main_page_if_missing = data/main_page_if_missing.txt
+#pdf_font_path = data/font.ttf
+pdf_font_size = 12
+pdf_margin = 15
+
+[none]
+match = .*@example.com
+encryption_protocol = none
