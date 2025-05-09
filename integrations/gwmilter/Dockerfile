@@ -7,25 +7,25 @@ FROM alpine:${ALPINE_VERSION} AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
-    build-base \
-    glib-dev \
-    openssl-dev \
-    boost-dev \
-    curl-dev \
-    fmt-dev \
-    gmime-dev \
-    gpgme-dev \
-    libharu-dev \
-    libmilter-dev \
-    spdlog-dev \
-    pkgconf \
-    autoconf \
-    autoconf-archive \
-    automake \
-    libtool \
-    make \
-    cmake \
-    git
+    build-base=0.5-r3 \
+    glib-dev=2.82.5-r0 \
+    openssl-dev=3.3.3-r0 \
+    boost-dev=1.84.0-r2 \
+    curl-dev=8.12.1-r1 \
+    fmt-dev=10.2.1-r2 \
+    gmime-dev=3.2.15-r0 \
+    gpgme-dev=1.24.1-r0 \
+    libharu-dev=2.4.4-r0 \
+    libmilter-dev=1.0.2-r9 \
+    spdlog-dev=1.15.0-r0 \
+    pkgconf=2.3.0-r0 \
+    autoconf=2.72-r0 \
+    autoconf-archive=2024.10.16-r0 \
+    automake=1.17-r0 \
+    libtool=2.4.7-r3 \
+    make=4.4.1-r2 \
+    cmake=3.31.1-r0 \
+    git=2.47.2-r0
 
 # Build and install libegpgcrypt
 RUN git clone --depth 1 https://github.com/drclau/libegpgcrypt.git /deps/libegpgcrypt && \
@@ -59,18 +59,18 @@ FROM alpine:${ALPINE_VERSION}
 
 # Install runtime dependencies
 RUN apk add --no-cache \
-    glib \
-    libstdc++ \
-    boost \
-    curl \
-    fmt \
-    gmime \
-    gpgme \
-    libharu \
-    libmilter \
-    spdlog \
-    gnupg \
-    gettext
+    glib=2.82.5-r0 \
+    libstdc++=14.2.0-r4 \
+    boost=1.84.0-r2 \
+    curl=8.12.1-r1 \
+    fmt=10.2.1-r2 \
+    gmime=3.2.15-r0 \
+    gpgme=1.24.1-r0 \
+    libharu=2.4.4-r0 \
+    libmilter=1.0.2-r9 \
+    spdlog=1.15.0-r0 \
+    gnupg=2.4.7-r0 \
+    gettext=0.22.5-r0
 
 # Create gwmilter user and set up GnuPG directory
 RUN adduser -D -H -s /sbin/nologin gwmilter && \
@@ -79,7 +79,8 @@ RUN adduser -D -H -s /sbin/nologin gwmilter && \
     chmod 700 /app/gnupg
 
 # Copy built artifacts from the builder stage
-COPY --from=builder /usr/local/lib /usr/local/lib
+COPY --from=builder /usr/local/lib/libegpgcrypt.so* /usr/local/lib/
+COPY --from=builder /usr/local/lib/libepdfcrypt.so* /usr/local/lib/
 COPY --from=builder --chown=root:root --chmod=755 /app/build/gwmilter /app/
 
 # Copy supporting files
