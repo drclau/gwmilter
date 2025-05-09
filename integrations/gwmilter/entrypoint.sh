@@ -12,6 +12,7 @@ CONFIG_FILE="${CONFIG_FILE:-/app/config.ini}"
 KEYS_DIR="${KEYS_DIR:-/app/keys}"
 SIGNING_KEY_NAME="${SIGNING_KEY_NAME:-gwmilter-internal-signing-key}"
 GNUPGHOME="${GNUPGHOME:-/app/gnupg}"
+KEYSERVER_URL="${KEYSERVER_URL:-hkp://key-server:11371}"
 GWMILTER_USER="${GWMILTER_USER:-gwmilter}"
 GWMILTER_GROUP="${GWMILTER_GROUP:-gwmilter}"
 CLEAN_PGP_KEYS_ON_START="${CLEAN_PGP_KEYS_ON_START:-false}"
@@ -20,7 +21,7 @@ PUBLIC_KEY_PATTERN="${PUBLIC_KEY_PATTERN:-*.pgp}"
 if [ "${CLEAN_PGP_KEYS_ON_START}" = "true" ]; then
     printf 'CLEAN_PGP_KEYS_ON_START is set to true, cleaning %s directory...\n' "$GNUPGHOME"
     if [ -d "$GNUPGHOME" ]; then
-        rm -rf "$GNUPGHOME"/* "$GNUPGHOME"/.[!.]* || :
+        find "$GNUPGHOME" -mindepth 1 -delete
         printf 'PGP keys directory cleaned successfully.\n'
     fi
 fi
@@ -35,7 +36,7 @@ fi
 # Configure dirmngr to use the key-server container for key fetching
 printf 'Configuring GnuPG dirmngr to use keyserver...\n'
 cat > "$GNUPGHOME/dirmngr.conf" << EOF
-keyserver hkp://key-server:11371
+keyserver ${KEYSERVER_URL}
 EOF
 chown "$GWMILTER_USER:$GWMILTER_GROUP" "$GNUPGHOME/dirmngr.conf"
 chmod 600 "$GNUPGHOME/dirmngr.conf"
@@ -73,7 +74,7 @@ else
         if su -s /bin/sh -m "$GWMILTER_USER" -c "gpg --import \"$KEY_FILE\""; then
             PUBLIC_KEY_COUNT=$((PUBLIC_KEY_COUNT + 1))
         else
-            printf 'Warning: Failed to import public key from %s\n' "$KEY_FILE"
+            printf 'Warning: Failed to import public key from %s\n' "$KEY_FILE" >&2
         fi
     done
     printf 'Imported %s public keys.\n' "$PUBLIC_KEY_COUNT"
