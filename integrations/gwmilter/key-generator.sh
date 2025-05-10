@@ -42,9 +42,9 @@ generate_key() {
     key_type=$1
     identity=$2
     expiration=$3  # Optional expiration parameter
-    
+
     printf "Creating key for %s...\n" "$identity"
-    
+
     if [ "$key_type" = "signing-only" ]; then
         # Generate signing-only signing key (no expiration for private keys)
         run_as_gwmilter "gpg --batch --passphrase '' --pinentry-mode loopback --quick-gen-key \"$identity\" default sign never"
@@ -91,16 +91,16 @@ validate_key_list() {
         printf "Please create the key list file with email addresses.\n" >&2
         exit 1
     fi
-    
+
     # Count non-empty, non-comment lines with a single grep
     valid_entries=$(grep -v "^[[:space:]]*\(#\|$\)" "$KEY_LIST_FILE" | wc -l)
-    
+
     if [ "$valid_entries" -eq 0 ]; then
         printf "❌ ERROR: Key list file is empty or contains only comments: %s\n" "$KEY_LIST_FILE" >&2
         printf "Please add at least one valid email address\n" >&2
         exit 1
     fi
-    
+
     printf "Found %s valid entries in %s\n" "$valid_entries" "$KEY_LIST_FILE"
 }
 
@@ -108,13 +108,13 @@ validate_key_list() {
 print_summary() {
     printf "\n"
     printf "=== All keys generated successfully ===\n"
-    
+
     # Create success flag file
     touch "$SUCCESS_FLAG"
     printf "%s: Key generation completed successfully\n" "$(date)" > "$SUCCESS_FLAG"
     chmod 644 "$SUCCESS_FLAG"
     printf "Created success flag file: %s\n" "$SUCCESS_FLAG"
-    
+
     # Kill all GPG related daemons to ensure clean exit
     printf "Terminating GPG daemons...\n"
     run_as_gwmilter "gpgconf --kill all"
@@ -162,7 +162,7 @@ while IFS= read -r line || [ -n "$line" ]; do
             fi
             ;;
     esac
-    
+
     # Parse the line using case statement (POSIX-compliant)
     case "$line" in
         *:*)
@@ -176,7 +176,7 @@ while IFS= read -r line || [ -n "$line" ]; do
             expiration=""
             ;;
     esac
-    
+
     if [ -n "$key_email" ]; then
         generate_key "keypair" "$key_email" "$expiration"
     else
