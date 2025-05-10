@@ -9,8 +9,8 @@ myorigin = $mydomain
 mydestination =
 
 # Configure relay to Mailpit for all mail
-transport_maps = static:smtp:[mailpit]:1025
-relayhost = [mailpit]:1025
+transport_maps = static:smtp:${RELAYHOST}
+relayhost = ${RELAYHOST}
 smtp_sasl_auth_enable = no
 
 # Accept all mail

@@ -7,7 +7,7 @@ services:
     volumes:
       - ./gwmilter/config.ini.template:/app/config.ini.template:ro
       - gwmilter-gnupg:/app/gnupg
-      - ./keys:/app/keys:ro # Mount the generated keys as read-only
+      - ./keys:/app/keys:ro
     environment:
       - SIGNING_KEY_NAME=gwmilter-signing-key
       - GWMILTER_USER=gwmilter
@@ -61,6 +61,7 @@ services:
       - ./postfix/main.cf.template:/etc/postfix/main.cf.template:ro
     environment:
       - SMTPD_MILTERS=inet:gwmilter:10025
+      - RELAYHOST=[mailpit]:1025
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
