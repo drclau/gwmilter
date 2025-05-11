@@ -1,0 +1,23 @@
+# All services are imported from the main docker-compose.yaml file,
+# except gwmilter, which you are expected to run locally.
+
+services:
+  key-generator:
+    extends:
+      file: docker-compose.yaml
+      service: key-generator
+  postfix-gw:
+    extends:
+      file: docker-compose.yaml
+      service: postfix-gw
+    environment:
+      # Use the local gwmilter instance
+      - SMTPD_MILTERS=inet:host.docker.internal:10025
+  mailpit:
+    extends:
+      file: docker-compose.yaml
+      service: mailpit
+
+networks:
+  gwmilter_network:
+    driver: bridge
