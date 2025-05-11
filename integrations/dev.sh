@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # This script prepares the gwmilter configuration file for local development,
-# and promots you to start the docker compose stack without gwmilter.
+# and prompts you to start the docker compose stack without gwmilter.
 # You can start gwmilter with the following command:
 #
 # ./build/gwmilter -c dev-config.ini
