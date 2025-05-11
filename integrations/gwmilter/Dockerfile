@@ -1,6 +1,6 @@
 ARG ALPINE_VERSION=3.21
-ARG LIBEGPGCRYPT_COMMIT=<insert-libegpgcrypt-commit-hash>
-ARG LIBEPDFCRYPT_COMMIT=<insert-libepdfcrypt-commit-hash>
+ARG LIBEGPGCRYPT_COMMIT=49360bf5a07d9aec35f1cf311e9d14f73e01b5b0
+ARG LIBEPDFCRYPT_COMMIT=2eacdca2838a67aaada39241d2fda0136a28e2c2
 
 # Stage 1: Build dependencies and gwmilter
 FROM alpine:${ALPINE_VERSION} AS builder
@@ -28,7 +28,7 @@ RUN apk add --no-cache \
     git=2.47.2-r0
 
 # Build and install libegpgcrypt
-RUN git clone --depth 1 https://github.com/drclau/libegpgcrypt.git /deps/libegpgcrypt && \
+RUN git clone --depth 1 https://github.com/rzvncj/libegpgcrypt.git /deps/libegpgcrypt && \
     cd /deps/libegpgcrypt && \
     git checkout ${LIBEGPGCRYPT_COMMIT} && \
     ./bootstrap && \
@@ -37,7 +37,7 @@ RUN git clone --depth 1 https://github.com/drclau/libegpgcrypt.git /deps/libegpg
     make install
 
 # Build and install libepdfcrypt
-RUN git clone --depth 1 https://github.com/drclau/libepdfcrypt.git /deps/libepdfcrypt && \
+RUN git clone --depth 1 https://github.com/rzvncj/libepdfcrypt.git /deps/libepdfcrypt && \
     cd /deps/libepdfcrypt && \
     git checkout ${LIBEPDFCRYPT_COMMIT} && \
     ./bootstrap && \
