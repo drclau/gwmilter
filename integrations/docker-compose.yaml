@@ -77,6 +77,30 @@ services:
       retries: 5
       start_period: 5s
 
+  key-server:
+    build:
+      context: ..
+      dockerfile: integrations/key-server/Dockerfile
+    image: key-server:latest
+    restart: unless-stopped
+    volumes:
+      - ./keys/public:/app/keys/public:ro # Mount public keys as read-only
+    environment:
+      - KEYS_DIR=/app/keys/public
+      - HOST=0.0.0.0
+      - PORT=11371
+      - LOG_LEVEL=INFO
+    ports:
+      - "11371:11371" # HKP port for key queries
+    networks:
+      - gwmilter_network
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "11371" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
   mailpit:
     image: axllent/mailpit:latest
     environment:
