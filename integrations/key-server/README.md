@@ -1,6 +1,6 @@
 # PGP Key Server
 
-A lightweight PGP public key server implementing the HTTP Keyserver Protocol (HKP).
+A lightweight PGP public key server implementing the HKP (HTTP Keyserver Protocol).
 This is meant for testing only and should not be used in production.
 
 ## Features
@@ -8,19 +8,19 @@ This is meant for testing only and should not be used in production.
 - Serves PGP public keys from a filesystem directory.
 - Implements HKP (HTTP Keyserver Protocol) for compatibility with PGP clients.
 - RESTful API for key lookup and management.
-- Keys are stored as files named as `user@example.com.pgp`.
+- Keys are stored as files following the naming pattern `<email>.pgp` (e.g., `user@example.com.pgp`).
 
 ## API Endpoints
 
-### HKP Protocol (HKP Compatible)
+### HKP (HTTP Keyserver Protocol) Endpoints
 
-- `/pks/lookup?op=get&search=user@example.com` - Get a specific key by email
-- `/pks/lookup?op=index&search=example.com` - Search for keys matching a string
+- `/pks/lookup?op=get&search=user@example.com` - Get a specific key by email.
+- `/pks/lookup?op=index&search=example.com` - Search for keys matching a string.
 
-### REST API
+### RESTful API Endpoints
 
-- `GET /keys` - List all available keys
-- `GET /keys/{email}` - Get a specific key by email
+- `GET /keys` - List all available keys.
+- `GET /keys/{email}` - Get a specific key by email.
 
 ## Configuration
 
@@ -33,7 +33,7 @@ The service can be configured using environment variables:
 
 ## Usage
 
-The service is integrated in the **docker compose** setups, but can be run independenly via Docker or on host:
+The service is integrated with **docker compose** setups but can also be run independently via Docker or on the host:
 
 ```sh
 # via docker
