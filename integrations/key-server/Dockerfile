@@ -20,4 +20,4 @@ RUN mkdir -p /app/gnupg && chmod 700 /app/gnupg
 EXPOSE 11371
 
 # Run the service
-ENTRYPOINT ["python", "app.py"] 
+ENTRYPOINT ["python", "app.py"]
