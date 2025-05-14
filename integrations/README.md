@@ -42,7 +42,7 @@ swaks --to recipient@example.com --from sender@example.com --server localhost:25
 - **What to expect:**
     - emails sent to recipients matching `.*-pgp@example.com` will be PGP encrypted if there are public keys available:
         - `pgp-valid-present-01@example.com` and `pgp-valid-present-02@example.com` have valid keys in the **GnuPG** keyring, hence the email is encrypted.
-        - `pgp-valid-missing-01@example.com` has a valid key, but it has not been imported into the **GnuPG** keyring during the startup of the **gwmilter** container. Sending an email to this recipient will trigger the retrieval of the public key from the key server, and subsequintly the email is encrypted.
+        - `pgp-valid-missing-01@example.com` has a valid key, but it has not been imported into the **GnuPG** keyring during the startup of the **gwmilter** container. Sending an email to this recipient will trigger the retrieval of the public key from the key server, and subsequently the email is encrypted.
         - `pgp-expired-present-01@example.com` and `pgp-expired-missing-01@example.com` have expired keys, hence are rejected as recipients.
     - emails sent to `user-smime@example.com` will be encrypted with S/MIME, _if_ a certificate is available. **Currently,** the integrations environment does not handle the generation or importing of S/MIME certificates.
     - emails sent to `user-pdf@example.com` will be converted to a password protected PDF.
