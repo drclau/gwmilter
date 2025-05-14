@@ -202,7 +202,6 @@ def run_keyserver_reset(pgp_utils_args):
 def cleanup_keyserver_retrieved_keys(request):
     """Fixture to clean up keys containing 'missing' after test."""
     pgp_utils_args = get_gwmilter_flag(request)
-    print(f"pgp_utils_args: {pgp_utils_args}")
     try:
         print("Resetting keyserver to alive status in GPG dirmngr...")
         run_keyserver_reset(pgp_utils_args)
