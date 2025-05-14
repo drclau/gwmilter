@@ -24,7 +24,7 @@ def pytest_addoption(parser):
     parser.addini(
         "disable_email_cleanup",
         help="Disable email cleanup in mailpit_client fixture (bool, true/false)",
-        default="false",
+        default=None,
         type="bool",
     )
     parser.addoption(
@@ -113,17 +113,24 @@ def mailpit_url(request: pytest.FixtureRequest):
 def mailpit_client(request: pytest.FixtureRequest, mailpit_url):
     """Create and yield a MailpitClient instance using configured URL."""
     client = MailpitClient(base_url=mailpit_url)
+
     yield client
+
     if request.config.getoption("--disable-email-cleanup") or request.config.getini(
         "disable_email_cleanup"
     ):
+        print("Email cleanup disabled")
         return
 
     # Clean up any remaining messages after tests
     try:
         # Only delete if all tests passed. This is useful for debugging.
         if request.session.testsfailed == 0:
+            print("Deleting all messages from Mailpit")
             client.delete_all_messages()
+        else:
+            print("Not deleting messages from Mailpit because test failed")
+
     except Exception:
         pass  # Ignore cleanup errors
 
