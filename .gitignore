@@ -1,44 +1,38 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
+# Integrations
+/integrations/keys/
+/integrations/gnupg/
 
 # Build directories
 /build/
 /cmake-build-*/
 /.cache/
-/.fleet/
 
 # IDEs
 /.idea/
 /.vs/
 /.vscode/
+
+# Backup files
 *~
 
 # OS
 .DS_Store
 
+# Python
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+
+# pipenv
+Pipfile.lock
+
+# pyenv
+.python-version
