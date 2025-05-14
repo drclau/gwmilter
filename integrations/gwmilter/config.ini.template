@@ -61,8 +61,8 @@ signing_key = ${SIGNING_KEY_NAME}
 
 [pgp]
 # Comma-separated list of regular expressions for matching email recipients.
-# Leading and trailing spaces are trimmed.
-match = .*-pgp@example.com
+# Leading and trailing spaces for each regular expression in the list are trimmed.
+match = pgp-.*@example.com
 
 # Select the encryption protocol that is applied in this section.
 encryption_protocol = pgp

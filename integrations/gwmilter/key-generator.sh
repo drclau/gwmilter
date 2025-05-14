@@ -92,8 +92,10 @@ validate_key_list() {
         exit 1
     fi
 
-    # Count non-empty, non-comment lines with a single grep
-    valid_entries=$(grep -v "^[[:space:]]*\(#\|$\)" "$KEY_LIST_FILE" | wc -l)
+    printf "Processing key list file: %s\n" "$KEY_LIST_FILE"
+
+    # Count valid (non-empty, non-comment) lines
+    valid_entries=$(grep -cv "^[[:space:]]*\(#\|$\)" "$KEY_LIST_FILE")
 
     if [ "$valid_entries" -eq 0 ]; then
         printf "❌ ERROR: Key list file is empty or contains only comments: %s\n" "$KEY_LIST_FILE" >&2
@@ -121,6 +123,13 @@ print_summary() {
     printf "GPG daemons terminated.\n"
 }
 
+
+###############################################################################
+#                                                                             #
+#                           === MAIN EXECUTION ===                            #
+#                                                                             #
+###############################################################################
+
 # Check if keys were already generated successfully
 if [ -f "$SUCCESS_FLAG" ]; then
     printf "Found existing success flag at %s\n" "$SUCCESS_FLAG"
@@ -129,13 +138,6 @@ if [ -f "$SUCCESS_FLAG" ]; then
     printf "Delete this flag file if you want to regenerate keys.\n"
     exit 0
 fi
-
-
-###############################################################################
-#                                                                             #
-#                           === MAIN EXECUTION ===                            #
-#                                                                             #
-###############################################################################
 
 run_as_gwmilter 'command -v gpg > /dev/null 2>&1' || die 'gpg not installed or not in PATH for gwmilter user'
 setup_keys_directory
