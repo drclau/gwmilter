@@ -1,0 +1,5 @@
+pytest==8.3.5
+python-gnupg==0.5.4
+requests==2.32.3
+dataclasses-json==0.6.7
+typing-extensions==4.13.2

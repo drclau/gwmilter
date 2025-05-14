@@ -1,0 +1,24 @@
+Content-Type: multipart/alternative; boundary="alt-boundary"
+
+--alt-boundary
+Content-Type: text/plain; charset="utf-8"
+
+Hello,
+
+This is the plain text version of the email.
+
+Thanks,
+Sender
+
+--alt-boundary
+Content-Type: text/html; charset="utf-8"
+
+<html>
+  <body>
+    <p>Hello,</p>
+    <p>This is the <b>HTML</b> version of the email.</p>
+    <p>Thanks,<br>Sender</p>
+  </body>
+</html>
+
+--alt-boundary--

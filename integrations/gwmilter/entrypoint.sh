@@ -16,7 +16,7 @@ KEYSERVER_URL="${KEYSERVER_URL:-hkp://key-server:11371}"
 GWMILTER_USER="${GWMILTER_USER:-gwmilter}"
 GWMILTER_GROUP="${GWMILTER_GROUP:-gwmilter}"
 CLEAN_PGP_KEYS_ON_START="${CLEAN_PGP_KEYS_ON_START:-false}"
-PUBLIC_KEY_PATTERN="${PUBLIC_KEY_PATTERN:-*.pgp}"
+PUBLIC_KEY_PATTERN="${PUBLIC_KEY_PATTERN:-*present*.pgp}"
 
 if [ "${CLEAN_PGP_KEYS_ON_START}" = "true" ]; then
     printf 'CLEAN_PGP_KEYS_ON_START is set to true, cleaning %s directory...\n' "$GNUPGHOME"
@@ -94,6 +94,7 @@ printf 'Applying environment variable substitution to config file...\n'
 export MILTER_SOCKET="${MILTER_SOCKET:-inet:10025@0.0.0.0}"
 export SMTP_SERVER="${SMTP_SERVER:-smtp://postfix-gw:25}"
 export SIGNING_KEY_NAME
+# shellcheck disable=SC2016
 envsubst '${MILTER_SOCKET} ${SMTP_SERVER} ${SIGNING_KEY_NAME}' < "$CONFIG_FILE_TEMPLATE" > "${CONFIG_FILE}"
 
 exec /app/gwmilter -c "$CONFIG_FILE"

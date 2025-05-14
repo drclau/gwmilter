@@ -1,8 +1,18 @@
 # key_list.txt — Define email[:expiration] entries for PGP key gen (lines starting with ‘#’ are ignored)
 #
 # Format: email[:expiration]
-#   • Expiration: GnuPG durations (1y, 6m, 30d…), “0”/“never” for no expiry, or ISO timestamps
+#   • Expiration: GnuPG durations (1y, 6m, 30d…), "0"/"never" for no expiry, or ISO timestamps
 #     (use a past ISO date to generate an already-expired key). Default = 1y.
+#
+# Naming convention: pgp-<validity>-<presence>-<seq>@example.com[:expiration]
+#   • validity:   "valid" or "expired"  (for human/AI debugging)
+#   • presence:   "present" or "missing" (used by gwmilter to import keys).
+#                 Only "present" keys are imported. "missing" keys are left to be imported by GnuPG from a keyserver.
+#   • seq:        two-digit sequence number for variant differentiation
 
-user1-pgp@example.com:1y
-user2-pgp@example.com:20250101T000000
+# The following keys are required for the integration tests:
+pgp-valid-present-01@example.com:1y
+pgp-valid-present-02@example.com:1y
+pgp-valid-missing-01@example.com:1y
+pgp-expired-present-01@example.com:20250101T000000
+pgp-expired-missing-01@example.com:20250101T000000

@@ -1,0 +1,70 @@
+# All services are imported from the main docker-compose.yaml file,
+# except tests, which is defined here.
+
+services:
+  key-generator:
+    extends:
+      file: docker-compose.yaml
+      service: key-generator
+  key-server:
+    extends:
+      file: docker-compose.yaml
+      service: key-server
+  gwmilter:
+    extends:
+      file: docker-compose.yaml
+      service: gwmilter
+  postfix-gw:
+    extends:
+      file: docker-compose.yaml
+      service: postfix-gw
+  mailpit:
+    extends:
+      file: docker-compose.yaml
+      service: mailpit
+  tests:
+    image: gwmilter:latest
+    depends_on:
+      key-generator:
+        condition: service_completed_successfully
+      key-server:
+        condition: service_started
+      gwmilter:
+        condition: service_started
+      postfix-gw:
+        condition: service_started
+      mailpit:
+        condition: service_started
+    entrypoint: [ "/bin/sh", "-c" ]
+    command:
+      - |
+        sh -c '
+          apk add --no-cache gnupg python3 py3-pip docker-cli
+          python3 -m venv /venv
+          . /venv/bin/activate
+          pip install --upgrade pip
+          pip install -r /tests/requirements.txt
+          pytest \
+            -o console_output_style=classic \
+            --gwmilter-container=integrations-gwmilter-1 \
+            --smtp-host=postfix-gw \
+            --smtp-port=25 \
+            --mailpit-url=http://mailpit:8025 \
+            --keys-dir=/app/keys \
+            tests
+        '
+    volumes:
+      - ../tests:/tests:rw
+      - ../integrations/keys:/app/keys:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /
+    networks:
+      - gwmilter_network
+
+volumes:
+  gwmilter-gnupg:
+
+
+networks:
+  gwmilter_network:
+    driver: bridge

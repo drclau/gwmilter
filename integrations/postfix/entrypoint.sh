@@ -12,6 +12,7 @@ export SMTPD_MILTERS="${SMTPD_MILTERS:=inet:gwmilter:10025}"
 export RELAYHOST="${RELAYHOST:=[mailpit]:1025}"
 echo "SMTPD_MILTERS: ${SMTPD_MILTERS}"
 echo "RELAYHOST: ${RELAYHOST}"
+# shellcheck disable=SC2016
 envsubst '${SMTPD_MILTERS} ${RELAYHOST}' < /etc/postfix/main.cf.template > /etc/postfix/main.cf
 
 exec postfix start-fg
