@@ -1,0 +1,17 @@
+Content-Type: multipart/mixed; boundary="mixed-boundary"
+
+--mixed-boundary
+Content-Type: text/plain; charset="utf-8"
+
+Hello,
+
+Please find the attached file.
+
+--mixed-boundary
+Content-Type: text/plain; name="sample.txt"
+Content-Disposition: attachment; filename="sample.txt"
+Content-Transfer-Encoding: base64
+
+U29tZSBzYW1wbGUgdGV4dCBjb250ZW50IGhlcmUuCgo=
+
+--mixed-boundary--

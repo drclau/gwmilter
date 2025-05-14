@@ -1,0 +1,8 @@
+Content-Type: text/html; charset="utf-8"
+
+<html>
+  <body>
+    <h1>Hello!</h1>
+    <p>This is an <b>HTML</b> email.</p>
+  </body>
+</html>

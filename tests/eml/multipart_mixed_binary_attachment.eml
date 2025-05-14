@@ -1,0 +1,18 @@
+Content-Type: multipart/mixed; boundary="mixed-boundary"
+
+--mixed-boundary
+Content-Type: text/plain; charset="utf-8"
+
+Hello,
+
+Please find the attached binary file (a sample PNG image).
+
+--mixed-boundary
+Content-Type: image/png; name="sample.png"
+Content-Disposition: attachment; filename="sample.png"
+Content-Transfer-Encoding: base64
+
+iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXD
+IBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==
+
+--mixed-boundary--
