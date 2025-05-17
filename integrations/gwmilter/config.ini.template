@@ -46,7 +46,7 @@ dump_email_on_panic = false
 # It is recommended to use a dedicated key for this purpose.
 # To generate a new key, you can use the following:
 #
-# `gpg --pinentry-mode loopback --passphrase '' --quick-gen-key gwmilter-internal-signing-key default sign never`
+# `gpg --pinentry-mode loopback --passphrase '' --quick-gen-key gwmilter-signing-key default sign never`
 signing_key = ${SIGNING_KEY_NAME}
 
 # Headers storing any type of cryptographic signature or checksum

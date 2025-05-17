@@ -10,7 +10,7 @@ die() {
 CONFIG_FILE_TEMPLATE="${CONFIG_FILE_TEMPLATE:-/app/config.ini.template}"
 CONFIG_FILE="${CONFIG_FILE:-/app/config.ini}"
 KEYS_DIR="${KEYS_DIR:-/app/keys}"
-SIGNING_KEY_NAME="${SIGNING_KEY_NAME:-gwmilter-internal-signing-key}"
+SIGNING_KEY_NAME="${SIGNING_KEY_NAME:-gwmilter-signing-key}"
 GNUPGHOME="${GNUPGHOME:-/app/gnupg}"
 KEYSERVER_URL="${KEYSERVER_URL:-hkp://key-server:11371}"
 GWMILTER_USER="${GWMILTER_USER:-gwmilter}"
