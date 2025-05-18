@@ -21,7 +21,7 @@ For comprehensive instructions on setting up a local development environment to 
         ```sh
         pip install -r tests/requirements.txt
         ```
-3.  **GnuPG `dirmngr` Configuration (for local **gwmilter** testing):**
+3.  **GnuPG `dirmngr` Configuration (for local `gwmilter` testing):**
     
     If you plan to run **gwmilter** locally (outside of Docker) for testing against the dockerized services, you need to configure GnuPG's `dirmngr`. Ensure that your `dirmngr.conf` file (typically located in `~/.gnupg` or in `$GNUPGHOME` if it's set) has the dockerized `key-server` as the first entry:
     ```
