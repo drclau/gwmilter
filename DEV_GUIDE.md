@@ -2,7 +2,7 @@
 
 This guide outlines the steps to set up a local development environment for **gwmilter**, allowing you to build, run, and debug it directly on your machine while using Dockerized services for dependencies like Postfix, Mailpit, and the key server.
 
-For instructions on simply *running* the test suite against pre-defined Docker environments (including one where **gwmilter** itself is containerized), please refer to [`tests/README.md`](https://github.com/drclau/gwmilter/blob/main/tests/README.md).
+For instructions on simply *running* the test suite against pre-defined Docker environments (including one where **gwmilter** itself is containerized), please refer to [`tests/README.md`](tests/README.md).
 
 ## 1. Build gwmilter
 

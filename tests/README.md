@@ -2,7 +2,7 @@
 
 This document outlines the prerequisites, environment setup, and execution steps for running the **gwmilter** test suite.
 
-For comprehensive instructions on setting up a local development environment to build, run, and debug **gwmilter** directly on your machine, please see [LOCAL_DEV.md](LOCAL_DEV.md).
+For comprehensive instructions on setting up a local development environment to build, run, and debug **gwmilter** directly on your machine, please see [`DEV_GUIDE.md`](../DEV_GUIDE.md).
 
 ## Prerequisites for Running Tests
 
@@ -27,7 +27,7 @@ For comprehensive instructions on setting up a local development environment to 
     ```
     keyserver hkp://localhost:11371
     ```
-    The `integrations/dev.sh` script can help check this configuration. For detailed GnuPG setup when running **gwmilter** locally for development, refer to [LOCAL_DEV.md](LOCAL_DEV.md).
+    The `integrations/dev.sh` script can help check this configuration. For detailed GnuPG setup when running **gwmilter** locally for development, refer to [`DEV_GUIDE.md`](../DEV_GUIDE.md).
 
 ## Environment Setup for Standard Test Execution
 
@@ -40,7 +40,7 @@ This section describes setting up the test environment where **gwmilter** itself
     ```
 The `-d` flag runs the containers in detached mode. You can view logs using `docker compose -f integrations/docker-compose.yaml logs -f`.
 
-If you are looking to run **gwmilter** locally for development and debugging, please refer to the detailed instructions in [LOCAL_DEV.md](LOCAL_DEV.md). That guide covers starting dependent services with `docker-compose-no-gwmilter.yaml` and all necessary local **gwmilter** setup.
+If you are looking to run **gwmilter** locally for development and debugging, please refer to the detailed instructions in [`DEV_GUIDE.md`](../DEV_GUIDE.md). That guide covers starting dependent services with `docker-compose-no-gwmilter.yaml` and all necessary local **gwmilter** setup.
 
 ## Running the Tests
 
@@ -50,7 +50,7 @@ This section assumes you are running `pytest` from your local machine.
 
    Ensure the appropriate Docker Compose environment is running:
    *   For standard tests (gwmilter in Docker): `docker compose -f integrations/docker-compose.yaml up -d`
-   *   If testing a locally running **gwmilter**: Ensure dependent services are up via `docker-compose-no-gwmilter.yaml` and your local **gwmilter** is running. See [LOCAL_DEV.md](LOCAL_DEV.md) for this setup.
+   *   If testing a locally running **gwmilter**: Ensure dependent services are up via `docker-compose-no-gwmilter.yaml` and your local **gwmilter** is running. See [`DEV_GUIDE.md`](../DEV_GUIDE.md) for this setup.
 
 **2. Executing `pytest` Locally:**
 
@@ -79,7 +79,7 @@ This section assumes you are running `pytest` from your local machine.
 
        *   **If **gwmilter** is running locally:**
 
-           To test against a **gwmilter** instance running directly on your machine (after following setup in [LOCAL_DEV.md](LOCAL_DEV.md)), ensure your `pytest.ini` does not specify a `gwmilter_container`, or use the `--gwmilter-local` flag:
+           To test against a **gwmilter** instance running directly on your machine (after following setup in [`DEV_GUIDE.md`](../DEV_GUIDE.md)), ensure your `pytest.ini` does not specify a `gwmilter_container`, or use the `--gwmilter-local` flag:
            ```sh
            pytest --gwmilter-local tests/
            # Or, if pytest.ini has no gwmilter_container defined:

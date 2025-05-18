@@ -9,7 +9,7 @@ This directory contains a `docker-compose.yaml` that provisions a complete test 
 - **mailpit**: A web-based SMTP testing tool for capturing and viewing emails. It is accessible at [http://localhost:8025](http://localhost:8025)
 
 A setup that does not start the **gwmilter** container is provided too: `docker-compose-no-gwmilter.yaml`. This is meant to facilitate running **gwmilter** locally during development. The `integrations/dev.sh` script can generate a **gwmilter** configuration file for local use, based on `integrations/gwmilter/config.ini.template`.
-Detailed instructions for building **gwmilter** are available in [LOCAL_DEV.md](https://github.com/drclau/gwmilter/blob/main/DEV_GUIDE.md).
+Detailed instructions for building **gwmilter** are available in [`DEV_GUIDE.md`](../DEV_GUIDE.md).
 
 Additionally, a `docker-compose-tests.yaml` file is provided to run automated end-to-end tests. This setup extends the main `docker-compose.yaml` environment and adds a **tests** service. The **tests** service uses `pytest` to execute tests defined in the `tests/` directory, interacting with the other services like `gwmilter`, `postfix-gw`, and `key-server` to validate the end-to-end functionality. This offers an alternative to running the tests on the host machine.
 
