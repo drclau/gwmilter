@@ -18,44 +18,11 @@ PGP and S/MIME support relies on a local installation of [GnuPG](https://gnupg.o
 > - for increased security, it is recommended that only the public part of the keys is stored for `gwmilter` to use.
 > - losing your private keys will result in the incapacity of decrypting your emails. Be sure to back up your keys.
 
-## Dependencies
+## Getting Started
 
-* C++17 compiler
-* cmake
-* GnuPG
-* [libegpgcrypt](https://github.com/rzvncj/libegpgcrypt)
-* [libepdfcrypt](https://github.com/rzvncj/libepdfcrypt)
-* boost (property_tree, regex, lexical_cast, algorithm/string)
-* glib
-* libmilter
-* libcurl
-* spdlog
-* PkgConfig
-
-## How to build
-
-> **Notes on dependencies:** `libegpgcrypt` and `libepdfcrypt` may have to be built and installed from sources.
-> <br>
-> **macOS notes:** `libmilter` is available via [macports](https://www.macports.org) while the other dependencies are either part of the base system or can be installed via [brew](https://brew.sh) or [macports](https://www.macports.org).
-
-After you resolve the dependencies and clone the repository locally, you can build the project as follows:
-
-```shell
-cmake -B build -S .
-cmake --build build
-```
-
-If `libegpgcrypt` and `libepdfcrypt` are installed in a non-standard location, you can specify the path:
-
-```shell
-cmake -DEGPGCRYPT_PATH=../libs -DEPDFCRYPT_PATH=../libs -B build -S .
-```
-
-Should you want to build a debug binary, use:
-
-```shell
-cmake -DCMAKE_BUILD_TYPE=Debug -B build -S .
-```
+- Build and run: see [`DEV_GUIDE.md`](DEV_GUIDE.md).
+- Integration environment (Docker Compose): see [`integrations/README.md`](integrations/README.md).
+- Automated end-to-end tests: see [`tests/README.md`](tests/README.md).
 
 ## How to use
 
@@ -73,16 +40,10 @@ If an email contains recipients that match multiple encryption sections
 the original email is encrypted using the settings from the first matching section and the email is altered before returning it to the MTA. 
 However, a copy of the original email is made for each subsequent matching section, 
 and each copy is processed according to the matching section's settings. 
-These emails are then re-injected over SMTP to the MTA.
+These emails are then re-injected over SMTP into the MTA.
 The recipients that do not match any section are dropped.
 
-See the sample configuration for more details.
-
-### Plans / TODO
-
-* automated testing
-* documentation (describe the architecture, add diagrams, describe the configuration options in detail etc.)
-* MTA integration examples
+See [`config.ini`](https://github.com/drclau/gwmilter/blob/main/config.ini) and [`integrations/gwmilter/config.ini.template`](https://github.com/drclau/gwmilter/blob/main/integrations/gwmilter/config.ini.template) for more details.
 
 # Authors
 
