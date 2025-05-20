@@ -58,7 +58,7 @@ generate_key() {
         fi
 
         # Generate key pair for $identity with the specified expiration
-        run_as_gwmilter "gpg --batch --gen-key <<EOF
+        run_as_gwmilter "gpg --batch --gen-key" <<EOF
 %echo Generating a new ed25519/cv25519 key pair
 Key-Type: eddsa
 Key-Curve: ed25519
@@ -72,7 +72,7 @@ Expire-Date: $expiration
 %no-protection
 %commit
 %echo Done
-EOF"
+EOF
         # Export public key
         run_as_gwmilter "gpg --batch --export --armor --output /app/keys/public/${identity}.pgp \"$identity\""
         # Export private key
