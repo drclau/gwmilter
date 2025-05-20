@@ -1,0 +1,35 @@
+name: Docker Compose CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build services via Docker Compose
+        run: docker compose -f integrations/docker-compose-tests.yaml build
+
+      - name: Run integration tests via Docker Compose
+        run: |
+          docker compose -f integrations/docker-compose-tests.yaml up tests \
+            --abort-on-container-exit \
+            --exit-code-from tests
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose -f integrations/docker-compose-tests.yaml logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f integrations/docker-compose-tests.yaml down -v 
