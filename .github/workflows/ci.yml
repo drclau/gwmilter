@@ -32,4 +32,4 @@ jobs:
 
       - name: Tear down
         if: always()
-        run: docker compose -f integrations/docker-compose-tests.yaml down -v 
+        run: docker compose -f integrations/docker-compose-tests.yaml down -v
