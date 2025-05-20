@@ -48,7 +48,7 @@ generate_key() {
     if [ "$key_type" = "signing-only" ]; then
         # Generate signing-only signing key (no expiration for private keys)
         run_as_gwmilter "gpg --batch --passphrase '' --pinentry-mode loopback --quick-gen-key \"$identity\" default sign never"
-        run_as_gwmilter "gpg --export-secret-keys --armor \"$identity\"" > "/app/keys/private/${identity}.pgp"
+        run_as_gwmilter "gpg --batch --export-secret-keys --armor --output /app/keys/private/${identity}.pgp \"$identity\""
         printf "✅ signing-only key exported to /app/keys/private/%s.pgp\n" "$identity"
     elif [ "$key_type" = "keypair" ]; then
         # Use expiration if provided, otherwise default to 1y
@@ -74,9 +74,9 @@ Expire-Date: $expiration
 %echo Done
 EOF
         # Export public key
-        run_as_gwmilter "gpg --export --armor \"$identity\"" > "/app/keys/public/${identity}.pgp"
+        run_as_gwmilter "gpg --batch --export --armor --output /app/keys/public/${identity}.pgp \"$identity\""
         # Export private key
-        run_as_gwmilter "gpg --export-secret-keys --armor \"$identity\"" > "/app/keys/private/${identity}.pgp"
+        run_as_gwmilter "gpg --batch --export-secret-keys --armor --output /app/keys/private/${identity}.pgp \"$identity\""
         printf "✅ Key pair exported to /app/keys/public/%s.pgp and /app/keys/private/%s.pgp\n" "$identity" "$identity"
     else
         printf "❌ ERROR: Invalid key type: %s\n" "$key_type" >&2
