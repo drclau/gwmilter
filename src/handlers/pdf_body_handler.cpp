@@ -169,7 +169,7 @@ std::string pdf_body_handler::read_file(const std::string &filename)
     string line;
     while (std::getline(file, line))
         content << line << "\r\n";
-   
+
     return content.str();
 }
 
