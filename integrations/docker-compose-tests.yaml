@@ -23,36 +23,20 @@ services:
       file: docker-compose.yaml
       service: mailpit
   tests:
-    image: gwmilter:latest
+    build:
+      context: ..
+      dockerfile: integrations/tests-runner/Dockerfile
     depends_on:
       key-generator:
         condition: service_completed_successfully
       key-server:
-        condition: service_started
+        condition: service_healthy
       gwmilter:
-        condition: service_started
+        condition: service_healthy
       postfix-gw:
-        condition: service_started
+        condition: service_healthy
       mailpit:
-        condition: service_started
-    entrypoint: [ "/bin/sh", "-c" ]
-    command:
-      - |
-        sh -c '
-          apk add --no-cache gnupg python3 py3-pip docker-cli
-          python3 -m venv /venv
-          . /venv/bin/activate
-          pip install --upgrade pip
-          pip install -r /tests/requirements.txt
-          pytest \
-            -o console_output_style=classic \
-            --gwmilter-container=integrations-gwmilter-1 \
-            --smtp-host=postfix-gw \
-            --smtp-port=25 \
-            --mailpit-url=http://mailpit:8025 \
-            --keys-dir=/app/keys \
-            tests
-        '
+        condition: service_healthy
     volumes:
       - ../tests:/tests:rw
       - ../integrations/keys:/app/keys:ro
