@@ -29,7 +29,7 @@ services:
       interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 5s
+      start_period: 3s
 
   key-generator:
     build:
@@ -46,7 +46,7 @@ services:
       interval: 1s
       timeout: 3s
       retries: 10
-      start_period: 2s
+      start_period: 3s
 
   postfix-gw:
     build:
@@ -76,7 +76,7 @@ services:
       interval: 30s
       timeout: 3s
       retries: 5
-      start_period: 5s
+      start_period: 3s
 
   key-server:
     build:
@@ -99,7 +99,7 @@ services:
       interval: 30s
       timeout: 3s
       retries: 5
-      start_period: 5s
+      start_period: 3s
 
   mailpit:
     image: axllent/mailpit:latest
@@ -118,7 +118,7 @@ services:
       interval: 30s
       timeout: 3s
       retries: 5
-      start_period: 5s
+      start_period: 3s
 
 volumes:
   gwmilter-gnupg:
