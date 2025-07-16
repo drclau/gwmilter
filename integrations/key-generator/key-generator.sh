@@ -113,7 +113,7 @@ print_summary() {
 
     # Create success flag file
     touch "$SUCCESS_FLAG"
-    printf "%s: Key generation completed successfully\n" "$(date)" > "$SUCCESS_FLAG"
+    printf "%s: Key generation completed successfully\n" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" > "$SUCCESS_FLAG"
     chmod 644 "$SUCCESS_FLAG"
     printf "Created success flag file: %s\n" "$SUCCESS_FLAG"
 

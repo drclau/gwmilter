@@ -64,9 +64,11 @@ class Message:
     )
     date: Optional[str] = field(default=None, metadata=config(field_name="Date"))
     to: List[Recipient] = field(default_factory=list, metadata=config(field_name="To"))
-    cc: List[Recipient] = field(default_factory=list, metadata=config(field_name="Cc"))
-    bcc: List[Recipient] = field(
-        default_factory=list, metadata=config(field_name="Bcc")
+    cc: Optional[List[Recipient]] = field(
+        default=None, metadata=config(field_name="Cc")
+    )
+    bcc: Optional[List[Recipient]] = field(
+        default=None, metadata=config(field_name="Bcc")
     )
     reply_to: List[Recipient] = field(
         default_factory=list, metadata=config(field_name="ReplyTo")
@@ -97,9 +99,11 @@ class MessageSummary:
     )
     created: Optional[str] = field(default=None, metadata=config(field_name="Created"))
     to: List[Recipient] = field(default_factory=list, metadata=config(field_name="To"))
-    cc: List[Recipient] = field(default_factory=list, metadata=config(field_name="Cc"))
-    bcc: List[Recipient] = field(
-        default_factory=list, metadata=config(field_name="Bcc")
+    cc: Optional[List[Recipient]] = field(
+        default=None, metadata=config(field_name="Cc")
+    )
+    bcc: Optional[List[Recipient]] = field(
+        default=None, metadata=config(field_name="Bcc")
     )
     reply_to: List[Recipient] = field(
         default_factory=list, metadata=config(field_name="ReplyTo")

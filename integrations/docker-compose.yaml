@@ -3,7 +3,6 @@ services:
     build:
       context: ..
       dockerfile: integrations/gwmilter/Dockerfile
-    image: gwmilter:latest
     volumes:
       - ./gwmilter/config.ini.template:/app/config.ini.template:ro
       - gwmilter-gnupg:/app/gnupg
@@ -23,39 +22,36 @@ services:
     depends_on:
       key-generator:
         condition: service_completed_successfully
+      key-server:
+        condition: service_healthy
     healthcheck:
-      test: [ "CMD", "nc", "-z", "localhost", "10025" ]
-      interval: 5s
+      test: [ "CMD", "nc", "-z", "127.0.0.1", "10025" ]
+      interval: 30s
       timeout: 3s
-      retries: 5
-      start_period: 5s
+      retries: 3
+      start_period: 3s
 
   key-generator:
     build:
       context: ..
-      dockerfile: integrations/gwmilter/Dockerfile
-    image: gwmilter:latest
+      dockerfile: integrations/key-generator/Dockerfile
     restart: "no"
     volumes:
       - ./keys:/app/keys:rw
       - ./key_list.txt:/app/key_list.txt:ro
-      - ./gwmilter/key-generator.sh:/app/key-generator.sh:ro
     environment:
       - SIGNING_KEY_NAME=gwmilter-signing-key
-    entrypoint: [ "/bin/sh" ]
-    command: [ "/app/key-generator.sh" ]
     healthcheck:
       test: [ "CMD-SHELL", "[ -f /app/keys/.keys_generated ]" ]
       interval: 1s
       timeout: 3s
       retries: 10
-      start_period: 2s
+      start_period: 3s
 
   postfix-gw:
     build:
       context: ..
       dockerfile: integrations/postfix/Dockerfile
-    image: postfix-gw:latest
     user: "0:0"
     volumes:
       - ./postfix/main.cf.template:/etc/postfix/main.cf.template:ro
@@ -70,18 +66,22 @@ services:
       - "587:587"
     networks:
       - gwmilter_network
+    depends_on:
+      gwmilter:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
     healthcheck:
-      test: [ "CMD", "nc", "-z", "localhost", "25" ]
-      interval: 5s
+      test: [ "CMD", "nc", "-z", "127.0.0.1", "25" ]
+      interval: 30s
       timeout: 3s
       retries: 5
-      start_period: 5s
+      start_period: 3s
 
   key-server:
     build:
       context: ..
       dockerfile: integrations/key-server/Dockerfile
-    image: key-server:latest
     restart: unless-stopped
     volumes:
       - ./keys/public:/app/keys/public:ro # Mount public keys as read-only
@@ -95,11 +95,11 @@ services:
     networks:
       - gwmilter_network
     healthcheck:
-      test: [ "CMD", "nc", "-z", "localhost", "11371" ]
-      interval: 5s
+      test: [ "CMD", "nc", "-z", "127.0.0.1", "11371" ]
+      interval: 30s
       timeout: 3s
       retries: 5
-      start_period: 5s
+      start_period: 3s
 
   mailpit:
     image: axllent/mailpit:latest
@@ -114,11 +114,11 @@ services:
     networks:
       - gwmilter_network
     healthcheck:
-      test: [ "CMD", "nc", "-z", "localhost", "8025" ]
-      interval: 5s
+      test: [ "CMD", "nc", "-z", "127.0.0.1", "8025" ]
+      interval: 30s
       timeout: 3s
       retries: 5
-      start_period: 5s
+      start_period: 3s
 
 volumes:
   gwmilter-gnupg:
