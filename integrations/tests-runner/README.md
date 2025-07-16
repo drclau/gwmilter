@@ -15,7 +15,7 @@ Used in `docker-compose-tests.yaml` to run the test suite:
 ```yaml
 tests:
   build:
-    dockerfile: integrations/test-runner/Dockerfile
+    dockerfile: integrations/tests-runner/Dockerfile
   volumes:
     - ../tests:/tests:rw
     - ../integrations/keys:/app/keys:ro
