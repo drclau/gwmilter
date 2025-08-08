@@ -109,3 +109,20 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_L
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
     target_link_libraries(gwmilter PRIVATE c++fs)
 endif()
+
+# Add cfg2 demo executable with new modular structure
+add_executable(cfg2_demo
+    src/cfg2/demo.cpp
+    src/cfg2/dynamic_section.cpp
+    src/cfg2/ini_config.cpp
+)
+
+target_include_directories(cfg2_demo PRIVATE
+    ${PROJECT_SOURCE_DIR}/src
+)
+
+# Require C++17 for cfg2_demo (needed for std::variant and constexpr if)
+set_target_properties(cfg2_demo PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+)
