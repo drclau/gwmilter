@@ -30,3 +30,5 @@ cmake --build build -- -j10
 ## Testing Principles
 
 - Only write unittests for non-trivial functionality (trivial: setters/getters etc.)
+
+- don't `cd` to `build` when running tests

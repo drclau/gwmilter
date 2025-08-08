@@ -47,30 +47,26 @@ struct PdfEncryptionSection : BaseEncryptionSection {
     float pdf_margin = 10.0f;
 };
 
-struct NoneEncryptionSection : BaseEncryptionSection {
-};
+struct NoneEncryptionSection : BaseEncryptionSection { };
 
 // Main INI configuration
-struct IniConfig {
+struct Config {
     GeneralSection general;
     std::vector<std::unique_ptr<BaseEncryptionSection>> encryptionSections;
-    
+
     // Find first encryption section that matches the given value
-    BaseEncryptionSection* find_match(const std::string& value) const {
-        for (const auto& section : encryptionSections) {
-            if (section->matches(value)) {
+    BaseEncryptionSection *find_match(const std::string &value) const
+    {
+        for (const auto &section: encryptionSections)
+            if (section->matches(value))
                 return section.get();
-            }
-        }
         return nullptr;
     }
 };
 
-// Custom deserializer for IniConfig to handle mixed static/dynamic sections
-template<>
-struct is_deserializable_struct<IniConfig> : std::true_type {};
+// Custom deserializer for Config to handle mixed static/dynamic sections
+template<> struct is_deserializable_struct<Config> : std::true_type { };
 
-template<>
-IniConfig deserialize<IniConfig>(const TreeNode& node);
+template<> Config deserialize<Config>(const ConfigNode &node);
 
 } // namespace cfg2

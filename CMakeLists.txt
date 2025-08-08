@@ -26,6 +26,16 @@ find_package(CURL REQUIRED)
 find_package(Boost 1.52.0 REQUIRED COMPONENTS regex)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
+find_package(GTest REQUIRED)
+
+# Fetch SimpleIni using CMake FetchContent
+include(FetchContent)
+FetchContent_Declare(
+  simpleini
+  GIT_REPOSITORY https://github.com/brofield/simpleini.git
+  GIT_TAG v4.22
+)
+FetchContent_MakeAvailable(simpleini)
 
 # Use pkg-config to find and configure GLib and GMime
 pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET glib-2.0)
@@ -114,15 +124,51 @@ endif()
 add_executable(cfg2_demo
     src/cfg2/demo.cpp
     src/cfg2/dynamic_section.cpp
-    src/cfg2/ini_config.cpp
+    src/cfg2/config.cpp
+    src/cfg2/ini_reader.cpp
 )
 
 target_include_directories(cfg2_demo PRIVATE
     ${PROJECT_SOURCE_DIR}/src
+    ${simpleini_SOURCE_DIR}
 )
 
 # Require C++17 for cfg2_demo (needed for std::variant and constexpr if)
+
 set_target_properties(cfg2_demo PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON
 )
+
+# Enable testing
+enable_testing()
+
+# Add cfg2 tests executable with Google Test
+add_executable(cfg2_tests
+    src/cfg2/deserializer_tests.cpp
+    src/cfg2/dynamic_section_tests.cpp
+    src/cfg2/config_tests.cpp
+    src/cfg2/config_node_tests.cpp
+    src/cfg2/ini_reader_tests.cpp
+    src/cfg2/dynamic_section.cpp
+    src/cfg2/config.cpp
+    src/cfg2/ini_reader.cpp
+)
+
+target_include_directories(cfg2_tests PRIVATE
+    ${PROJECT_SOURCE_DIR}/src
+    ${simpleini_SOURCE_DIR}
+)
+
+target_link_libraries(cfg2_tests PRIVATE
+    GTest::gtest
+    GTest::gtest_main
+)
+
+set_target_properties(cfg2_tests PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+)
+
+# Register the test with CTest
+add_test(NAME cfg2_tests COMMAND cfg2_tests)
