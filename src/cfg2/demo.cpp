@@ -6,85 +6,77 @@ using namespace cfg2;
 int main() {
     // Example INI structure representing:
     // [general]
-    // appName=MyApp
-    // version=1.0.0
-    // logLevel=2
+    // milter_socket=unix:/var/run/gwmilter/gwmilter.sock
+    // daemonize=true
+    // log_type=syslog
+    // log_facility=mail
+    // log_priority=info
     //
-    // [db1]
-    // type=database
-    // match=^user_.*$,^admin_.*$
-    // host=localhost
-    // port=5432
-    // username=admin
-    // password=secret
+    // [encrypt_internal]
+    // match=.*@company\.com,.*@internal\.org
+    // encryption_protocol=pgp
+    // key_not_found_policy=retrieve
     //
-    // [cache1]
-    // type=cache
-    // match=^session_.*$, ^temp_.*$
-    // redisHost=redis.example.com
-    // redisPort=6379
-    // ttl=3600
+    // [encrypt_external_pdf]
+    // match=.*@external\.com
+    // encryption_protocol=pdf
+    // email_body_replacement=/etc/gwmilter/pdf_body.txt
+    // pdf_main_page_if_missing=/etc/gwmilter/pdf_cover.pdf
+    // pdf_password=secret123
     //
-    // [api_service]
-    // type=service
-    // match=^api_.*$,^webhook_.*$
-    // endpoint=https://api.example.com
-    // timeout=30
-    // enabled=true
+    // [no_encryption]
+    // match=.*@public\.org
+    // encryption_protocol=none
     
     TreeNode root{"config","",{
         {"general","",{
-            {"appName","MyApp"},
-            {"version","1.0.0"},
-            {"logLevel","2"}
+            {"milter_socket","unix:/var/run/gwmilter/gwmilter.sock"},
+            {"daemonize","true"},
+            {"log_type","syslog"},
+            {"log_facility","mail"},
+            {"log_priority","info"},
+            {"smtp_server","smtp://127.0.0.1"}
         }},
-        {"db1","",{
-            {"type","database"},
-            {"match","^user_.*$,^admin_.*$",{}},
-            {"host","localhost"},
-            {"port","5432"},
-            {"username","admin"},
-            {"password","secret"}
+        {"encrypt_internal","",{
+            {"encryption_protocol","pgp"},
+            {"match",".*@company\\.com,.*@internal\\.org",{}},
+            {"key_not_found_policy","retrieve"}
         }},
-        {"cache1","",{
-            {"type","cache"},
-            {"match","^session_.*$, ^temp_.*$",{}},
-            {"redisHost","redis.example.com"},
-            {"redisPort","6379"},
-            {"ttl","3600"}
+        {"encrypt_external_pdf","",{
+            {"encryption_protocol","pdf"},
+            {"match",".*@external\\.com",{}},
+            {"email_body_replacement","/etc/gwmilter/pdf_body.txt"},
+            {"pdf_main_page_if_missing","/etc/gwmilter/pdf_cover.pdf"},
+            {"pdf_password","secret123"}
         }},
-        {"api_service","",{
-            {"type","service"},
-            {"match","^api_.*$,^webhook_.*$",{}},
-            {"endpoint","https://api.example.com"},
-            {"timeout","30"},
-            {"enabled","true"}
+        {"no_encryption","",{
+            {"encryption_protocol","none"},
+            {"match",".*@public\\.org",{}}
         }}
     }};
 
     IniConfig config = parse<IniConfig>(root);
 
     std::cout << "=== General Configuration ===\n";
-    std::cout << "App Name: " << config.general.appName << "\n";
-    std::cout << "Version: " << config.general.version << "\n";
-    std::cout << "Log Level: " << config.general.logLevel << "\n\n";
+    std::cout << "Milter Socket: " << config.general.milter_socket << "\n";
+    std::cout << "Daemonize: " << (config.general.daemonize ? "true" : "false") << "\n";
+    std::cout << "Log Type: " << config.general.log_type << "\n";
+    std::cout << "Log Facility: " << config.general.log_facility << "\n";
+    std::cout << "Log Priority: " << config.general.log_priority << "\n";
+    std::cout << "SMTP Server: " << config.general.smtp_server << "\n\n";
 
-    std::cout << "=== Dynamic Sections ===\n";
-    for (const auto& section : config.dynamicSections) {
-        std::cout << "[" << section->sectionName << "] (type: " << section->type << ")\n";
+    std::cout << "=== Encryption Sections ===\n";
+    for (const auto& section : config.encryptionSections) {
+        std::cout << "[" << section->sectionName << "] (protocol: " << section->encryption_protocol << ")\n";
         
-        if (auto* db = dynamic_cast<DatabaseSection*>(section.get())) {
-            std::cout << "  Host: " << db->host << "\n";
-            std::cout << "  Port: " << db->port << "\n";
-            std::cout << "  Username: " << db->username << "\n";
-        } else if (auto* cache = dynamic_cast<CacheSection*>(section.get())) {
-            std::cout << "  Redis Host: " << cache->redisHost << "\n";
-            std::cout << "  Redis Port: " << cache->redisPort << "\n";
-            std::cout << "  TTL: " << cache->ttl << "\n";
-        } else if (auto* service = dynamic_cast<ServiceSection*>(section.get())) {
-            std::cout << "  Endpoint: " << service->endpoint << "\n";
-            std::cout << "  Timeout: " << service->timeout << "\n";
-            std::cout << "  Enabled: " << (service->enabled ? "true" : "false") << "\n";
+        if (auto* pgp = dynamic_cast<PgpEncryptionSection*>(section.get())) {
+            std::cout << "  Key Not Found Policy: " << pgp->key_not_found_policy << "\n";
+        } else if (auto* smime = dynamic_cast<SmimeEncryptionSection*>(section.get())) {
+            std::cout << "  Key Not Found Policy: " << smime->key_not_found_policy << "\n";
+        } else if (auto* pdf = dynamic_cast<PdfEncryptionSection*>(section.get())) {
+            std::cout << "  Email Body Replacement: " << pdf->email_body_replacement << "\n";
+            std::cout << "  PDF Main Page If Missing: " << pdf->pdf_main_page_if_missing << "\n";
+            std::cout << "  PDF Password: " << pdf->pdf_password << "\n";
         }
         std::cout << "\n";
     }
@@ -93,13 +85,11 @@ int main() {
     
     // Test cases for the find_match functionality
     std::vector<std::string> testValues = {
-        "user_12345",
-        "admin_root", 
-        "session_abc123",
-        "temp_cache_key",
-        "api_request_001",
-        "webhook_github",
-        "unknown_value"
+        "user@company.com",
+        "admin@internal.org", 
+        "client@external.com",
+        "newsletter@public.org",
+        "support@example.com"
     };
     
     for (const auto& testValue : testValues) {
@@ -108,7 +98,7 @@ int main() {
         auto* matchedSection = config.find_match(testValue);
         if (matchedSection) {
             std::cout << "Found in section [" << matchedSection->sectionName 
-                      << "] (type: " << matchedSection->type << ")\n";
+                      << "] (protocol: " << matchedSection->encryption_protocol << ")\n";
         } else {
             std::cout << "No match found\n";
         }

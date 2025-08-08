@@ -4,32 +4,49 @@ namespace cfg2 {
 
 // Register static section
 REGISTER_STRUCT(GeneralSection,
-    field("appName", &GeneralSection::appName),
-    field("version", &GeneralSection::version),
-    field("logLevel", &GeneralSection::logLevel)
+    field("milter_socket", &GeneralSection::milter_socket),
+    field("daemonize", &GeneralSection::daemonize),
+    field("user", &GeneralSection::user),
+    field("group", &GeneralSection::group),
+    field("log_type", &GeneralSection::log_type),
+    field("log_facility", &GeneralSection::log_facility),
+    field("log_priority", &GeneralSection::log_priority),
+    field("milter_timeout", &GeneralSection::milter_timeout),
+    field("smtp_server", &GeneralSection::smtp_server),
+    field("smtp_server_timeout", &GeneralSection::smtp_server_timeout),
+    field("dump_email_on_panic", &GeneralSection::dump_email_on_panic),
+    field("signing_key", &GeneralSection::signing_key),
+    field("strip_headers", &GeneralSection::strip_headers)
 )
 
-// Register dynamic section types
-REGISTER_DYNAMIC_SECTION(DatabaseSection, "database",
-    field("match", &DatabaseSection::match),
-    field("host", &DatabaseSection::host),
-    field("port", &DatabaseSection::port),
-    field("username", &DatabaseSection::username),
-    field("password", &DatabaseSection::password)
+// Register encryption section types
+REGISTER_DYNAMIC_SECTION(PgpEncryptionSection, "pgp",
+    field("match", &PgpEncryptionSection::match),
+    field("encryption_protocol", &PgpEncryptionSection::encryption_protocol),
+    field("key_not_found_policy", &PgpEncryptionSection::key_not_found_policy)
 )
 
-REGISTER_DYNAMIC_SECTION(CacheSection, "cache",
-    field("match", &CacheSection::match),
-    field("redisHost", &CacheSection::redisHost),
-    field("redisPort", &CacheSection::redisPort),
-    field("ttl", &CacheSection::ttl)
+REGISTER_DYNAMIC_SECTION(SmimeEncryptionSection, "smime",
+    field("match", &SmimeEncryptionSection::match),
+    field("encryption_protocol", &SmimeEncryptionSection::encryption_protocol),
+    field("key_not_found_policy", &SmimeEncryptionSection::key_not_found_policy)
 )
 
-REGISTER_DYNAMIC_SECTION(ServiceSection, "service",
-    field("match", &ServiceSection::match),
-    field("endpoint", &ServiceSection::endpoint),
-    field("timeout", &ServiceSection::timeout),
-    field("enabled", &ServiceSection::enabled)
+REGISTER_DYNAMIC_SECTION(PdfEncryptionSection, "pdf",
+    field("match", &PdfEncryptionSection::match),
+    field("encryption_protocol", &PdfEncryptionSection::encryption_protocol),
+    field("email_body_replacement", &PdfEncryptionSection::email_body_replacement),
+    field("pdf_main_page_if_missing", &PdfEncryptionSection::pdf_main_page_if_missing),
+    field("pdf_attachment", &PdfEncryptionSection::pdf_attachment),
+    field("pdf_password", &PdfEncryptionSection::pdf_password),
+    field("pdf_font_path", &PdfEncryptionSection::pdf_font_path),
+    field("pdf_font_size", &PdfEncryptionSection::pdf_font_size),
+    field("pdf_margin", &PdfEncryptionSection::pdf_margin)
+)
+
+REGISTER_DYNAMIC_SECTION(NoneEncryptionSection, "none",
+    field("match", &NoneEncryptionSection::match),
+    field("encryption_protocol", &NoneEncryptionSection::encryption_protocol)
 )
 
 // Implementation of custom deserializer for IniConfig
@@ -43,13 +60,16 @@ IniConfig deserialize<IniConfig>(const TreeNode& node) {
         config.general = deserialize<GeneralSection>(*generalNode);
     }
     
-    // Deserialize dynamic sections in order
+    // Deserialize encryption sections in order
     for (const auto& child : node.children) {
         if (child.key != "general") {
-            const TreeNode* typeNode = child.findChild("type");
-            if (typeNode && DynamicSectionRegistry::hasType(typeNode->value)) {
-                config.dynamicSections.push_back(
-                    DynamicSectionRegistry::create(typeNode->value, child)
+            const TreeNode* protocolNode = child.findChild("encryption_protocol");
+            if (protocolNode && DynamicSectionRegistry::hasType(protocolNode->value)) {
+                auto section = DynamicSectionRegistry::create(protocolNode->value, child);
+                config.encryptionSections.push_back(
+                    std::unique_ptr<BaseEncryptionSection>(
+                        static_cast<BaseEncryptionSection*>(section.release())
+                    )
                 );
             }
         }
