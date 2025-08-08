@@ -12,8 +12,7 @@ int main() {
     //
     // [db1]
     // type=database
-    // match=^user_.*$
-    // match=^admin_.*$
+    // match=^user_.*$,^admin_.*$
     // host=localhost
     // port=5432
     // username=admin
@@ -21,16 +20,14 @@ int main() {
     //
     // [cache1]
     // type=cache
-    // match=^session_.*$
-    // match=^temp_.*$
+    // match=^session_.*$, ^temp_.*$
     // redisHost=redis.example.com
     // redisPort=6379
     // ttl=3600
     //
     // [api_service]
     // type=service
-    // match=^api_.*$
-    // match=^webhook_.*$
+    // match=^api_.*$,^webhook_.*$
     // endpoint=https://api.example.com
     // timeout=30
     // enabled=true
@@ -43,10 +40,7 @@ int main() {
         }},
         {"db1","",{
             {"type","database"},
-            {"match","",{
-                {"item","^user_.*$"},
-                {"item","^admin_.*$"}
-            }},
+            {"match","^user_.*$,^admin_.*$",{}},
             {"host","localhost"},
             {"port","5432"},
             {"username","admin"},
@@ -54,23 +48,17 @@ int main() {
         }},
         {"cache1","",{
             {"type","cache"},
-            {"match","",{
-                {"item","^session_.*$"},
-                {"item","^temp_.*$"}
-            }},
+            {"match","^session_.*$, ^temp_.*$",{}},
             {"redisHost","redis.example.com"},
             {"redisPort","6379"},
             {"ttl","3600"}
         }},
         {"api_service","",{
             {"type","service"},
-            {"match","",{
-                {"item","^api_.*$"},
-                {"item","^webhook_.*$"}
-            }},
+            {"match","^api_.*$,^webhook_.*$",{}},
             {"endpoint","https://api.example.com"},
             {"timeout","30"},
-            {"enabled","1"}
+            {"enabled","true"}
         }}
     }};
 

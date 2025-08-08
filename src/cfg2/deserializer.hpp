@@ -4,6 +4,7 @@
 #include <tuple>
 #include <type_traits>
 #include <memory>
+#include <sstream>
 
 namespace cfg2 {
 
@@ -59,11 +60,35 @@ class Deserializer {
                     auto& vec = obj.*(fieldDesc.ptr);
                     vec.clear();
                     
-                    for (const auto& kid : childNode->children) {
-                        if constexpr (is_deserializable_struct<Elem>::value) {
-                            vec.push_back(deserialize<Elem>(kid));
-                        } else {
-                            vec.push_back(fromString<Elem>(kid.value));
+                    // Check if we have a comma-separated value or child nodes
+                    if (!childNode->value.empty()) {
+                        // Parse comma-separated string
+                        std::stringstream ss(childNode->value);
+                        std::string token;
+                        while (std::getline(ss, token, ',')) {
+                            // Trim whitespace
+                            size_t start = token.find_first_not_of(" \t");
+                            if (start == std::string::npos) continue;
+                            size_t end = token.find_last_not_of(" \t");
+                            token = token.substr(start, end - start + 1);
+                            
+                            if (!token.empty()) {
+                                if constexpr (is_deserializable_struct<Elem>::value) {
+                                    // Cannot deserialize structs from comma-separated strings
+                                    throw std::runtime_error("Cannot parse nested structs from comma-separated values");
+                                } else {
+                                    vec.push_back(fromString<Elem>(token));
+                                }
+                            }
+                        }
+                    } else {
+                        // Fall back to child node approach
+                        for (const auto& kid : childNode->children) {
+                            if constexpr (is_deserializable_struct<Elem>::value) {
+                                vec.push_back(deserialize<Elem>(kid));
+                            } else {
+                                vec.push_back(fromString<Elem>(kid.value));
+                            }
                         }
                     }
                 }
