@@ -32,17 +32,17 @@ template<> void validate<PdfEncryptionSection>(const PdfEncryptionSection &secti
 template<> void validate<NoneEncryptionSection>(const NoneEncryptionSection &section);
 
 // Register static section
-REGISTER_STRUCT(GeneralSection, field("milter_socket", &GeneralSection::milter_socket),
-                field("daemonize", &GeneralSection::daemonize), field("user", &GeneralSection::user),
-                field("group", &GeneralSection::group), field("log_type", &GeneralSection::log_type),
-                field("log_facility", &GeneralSection::log_facility),
-                field("log_priority", &GeneralSection::log_priority),
-                field("milter_timeout", &GeneralSection::milter_timeout),
-                field("smtp_server", &GeneralSection::smtp_server),
-                field("smtp_server_timeout", &GeneralSection::smtp_server_timeout),
-                field("dump_email_on_panic", &GeneralSection::dump_email_on_panic),
-                field("signing_key", &GeneralSection::signing_key),
-                field("strip_headers", &GeneralSection::strip_headers))
+REGISTER_STATIC_SECTION(GeneralSection, "general", field("milter_socket", &GeneralSection::milter_socket),
+                        field("daemonize", &GeneralSection::daemonize), field("user", &GeneralSection::user),
+                        field("group", &GeneralSection::group), field("log_type", &GeneralSection::log_type),
+                        field("log_facility", &GeneralSection::log_facility),
+                        field("log_priority", &GeneralSection::log_priority),
+                        field("milter_timeout", &GeneralSection::milter_timeout),
+                        field("smtp_server", &GeneralSection::smtp_server),
+                        field("smtp_server_timeout", &GeneralSection::smtp_server_timeout),
+                        field("dump_email_on_panic", &GeneralSection::dump_email_on_panic),
+                        field("signing_key", &GeneralSection::signing_key),
+                        field("strip_headers", &GeneralSection::strip_headers))
 
 // Register encryption section types
 REGISTER_DYNAMIC_SECTION(PgpEncryptionSection, "pgp", field("match", &PgpEncryptionSection::match),
@@ -71,14 +71,18 @@ template<> Config deserialize<Config>(const ConfigNode &node)
 {
     Config config{};
 
-    // Deserialize static general section
-    const ConfigNode *generalNode = node.findChild("general");
-    if (generalNode)
-        config.general = deserialize<GeneralSection>(*generalNode);
-
-    // Deserialize encryption sections in order
+    // Process all sections in order using the unified registry
     for (const auto &child: node.children) {
-        if (child.key != "general") {
+        // Handle static sections by name
+        if (SectionRegistry::hasSection(child.key)) {
+            auto section = SectionRegistry::create(child.key, child);
+
+            if (auto *generalSection = dynamic_cast<GeneralSection *>(section.get()))
+                config.general = *generalSection;
+        }
+        // Handle dynamic sections by their encryption_protocol
+        else
+        {
             const ConfigNode *protocolNode = child.findChild("encryption_protocol");
             if (protocolNode && DynamicSectionRegistry::hasType(protocolNode->value)) {
                 auto section = DynamicSectionRegistry::create(protocolNode->value, child);

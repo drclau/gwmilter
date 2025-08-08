@@ -123,7 +123,7 @@ endif()
 # Add cfg2 demo executable with new modular structure
 add_executable(cfg2_demo
     src/cfg2/demo.cpp
-    src/cfg2/dynamic_section.cpp
+    src/cfg2/section_registry.cpp
     src/cfg2/config.cpp
     src/cfg2/ini_reader.cpp
 )
@@ -150,7 +150,7 @@ add_executable(cfg2_tests
     src/cfg2/config_tests.cpp
     src/cfg2/config_node_tests.cpp
     src/cfg2/ini_reader_tests.cpp
-    src/cfg2/dynamic_section.cpp
+    src/cfg2/section_registry.cpp
     src/cfg2/config.cpp
     src/cfg2/ini_reader.cpp
 )

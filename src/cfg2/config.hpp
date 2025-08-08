@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dynamic_section.hpp"
+#include "section_registry.hpp"
 #include <vector>
 
 namespace cfg2 {
@@ -8,7 +8,7 @@ namespace cfg2 {
 // ============= INI CONFIGURATION EXAMPLE =============
 
 // Static general section - always present
-struct GeneralSection {
+struct GeneralSection : BaseSection {
     std::string milter_socket;
     bool daemonize = false;
     std::string user;

@@ -11,16 +11,19 @@
 namespace cfg2 {
 
 // --------------------------------------------------------------------------------
-// Dynamic section support
+// Section support - unified base for both static and dynamic sections
 
-// Base class for all dynamic sections
-struct BaseDynamicSection {
+// Base class for all sections
+struct BaseSection {
     std::string sectionName;
+    virtual ~BaseSection() = default;
+};
+
+// Base class for all dynamic sections (extends BaseSection with matching functionality)
+struct BaseDynamicSection : BaseSection {
     std::string type;
     std::vector<std::string> match; // Raw regex patterns from INI
     std::vector<std::regex> compiledMatches; // Compiled regex patterns
-
-    virtual ~BaseDynamicSection() = default;
 
     // Check if any of the compiled regex patterns match the given value
     bool matches(const std::string &value) const
@@ -45,18 +48,46 @@ struct BaseDynamicSection {
     }
 };
 
-// Factory function type for creating dynamic sections
-using SectionFactory = std::function<std::unique_ptr<BaseDynamicSection>(const ConfigNode &)>;
+// Factory function type for creating sections (both static and dynamic)
+using SectionFactory = std::function<std::unique_ptr<BaseSection>(const ConfigNode &)>;
 
-// Registry for dynamic section factories
-class DynamicSectionRegistry {
+// Unified registry for all section factories
+class SectionRegistry {
     static std::unordered_map<std::string, SectionFactory> factories;
 
 public:
-    static void registerFactory(const std::string &type, const SectionFactory &factory);
+    static void registerFactory(const std::string &sectionName, const SectionFactory &factory);
+    static std::unique_ptr<BaseSection> create(const std::string &sectionName, const ConfigNode &node);
+    static bool hasSection(const std::string &sectionName);
+};
+
+// Backward compatibility - DynamicSectionRegistry delegates to SectionRegistry
+class DynamicSectionRegistry {
+public:
+    static void registerFactory(const std::string &type,
+                                const std::function<std::unique_ptr<BaseDynamicSection>(const ConfigNode &)> &factory);
     static std::unique_ptr<BaseDynamicSection> create(const std::string &type, const ConfigNode &node);
     static bool hasType(const std::string &type);
 };
+
+// Macro to register static section types
+#define REGISTER_STATIC_SECTION(Type, SectionName, ...)                                                                \
+    static_assert(std::is_base_of_v<BaseSection, Type>, #Type " must inherit from BaseSection");                       \
+    REGISTER_STRUCT(Type, __VA_ARGS__)                                                                                 \
+    namespace {                                                                                                        \
+    struct Type##StaticRegistrar {                                                                                     \
+        Type##StaticRegistrar()                                                                                        \
+        {                                                                                                              \
+            SectionRegistry::registerFactory(SectionName, [](const ConfigNode &node) -> std::unique_ptr<BaseSection> { \
+                auto obj = std::make_unique<Type>();                                                                   \
+                *obj = deserialize<Type>(node);                                                                        \
+                obj->sectionName = node.key;                                                                           \
+                return obj;                                                                                            \
+            });                                                                                                        \
+        }                                                                                                              \
+    };                                                                                                                 \
+    static Type##StaticRegistrar Type##_static_registrar_instance;                                                     \
+    }
 
 // Macro to register dynamic section types
 #define REGISTER_DYNAMIC_SECTION(Type, TypeName, ...)                                                                  \

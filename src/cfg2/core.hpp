@@ -6,5 +6,5 @@
 #include "config.hpp"
 #include "config_node.hpp"
 #include "deserializer.hpp"
-#include "dynamic_section.hpp"
 #include "ini_reader.hpp"
+#include "section_registry.hpp"
