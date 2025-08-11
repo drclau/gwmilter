@@ -38,6 +38,7 @@ struct BaseDynamicSection : BaseSection {
     void compileMatches()
     {
         compiledMatches.clear();
+        compiledMatches.reserve(match.size());
         for (const auto &pattern: match) {
             try {
                 compiledMatches.emplace_back(pattern);
@@ -48,24 +49,28 @@ struct BaseDynamicSection : BaseSection {
     }
 };
 
-// Factory function type for creating sections (both static and dynamic)
-using SectionFactory = std::function<std::unique_ptr<BaseSection>(const ConfigNode &)>;
+// Factory function type for creating static sections
+using StaticSectionFactory = std::function<std::unique_ptr<BaseSection>(const ConfigNode &)>;
 
-// Unified registry for all section factories
-class SectionRegistry {
-    static std::unordered_map<std::string, SectionFactory> factories;
+// Factory function type for creating dynamic sections
+using DynamicSectionFactory = std::function<std::unique_ptr<BaseDynamicSection>(const ConfigNode &)>;
+
+// Registry for static sections only
+class StaticSectionRegistry {
+    static std::unordered_map<std::string, StaticSectionFactory> factories;
 
 public:
-    static void registerFactory(const std::string &sectionName, const SectionFactory &factory);
+    static void registerFactory(const std::string &sectionName, const StaticSectionFactory &factory);
     static std::unique_ptr<BaseSection> create(const std::string &sectionName, const ConfigNode &node);
     static bool hasSection(const std::string &sectionName);
 };
 
-// Backward compatibility - DynamicSectionRegistry delegates to SectionRegistry
+// Registry for dynamic sections only
 class DynamicSectionRegistry {
+    static std::unordered_map<std::string, DynamicSectionFactory> factories;
+
 public:
-    static void registerFactory(const std::string &type,
-                                const std::function<std::unique_ptr<BaseDynamicSection>(const ConfigNode &)> &factory);
+    static void registerFactory(const std::string &type, const DynamicSectionFactory &factory);
     static std::unique_ptr<BaseDynamicSection> create(const std::string &type, const ConfigNode &node);
     static bool hasType(const std::string &type);
 };
@@ -78,12 +83,12 @@ public:
     struct Type##StaticRegistrar {                                                                                     \
         Type##StaticRegistrar()                                                                                        \
         {                                                                                                              \
-            SectionRegistry::registerFactory(SectionName, [](const ConfigNode &node) -> std::unique_ptr<BaseSection> { \
-                auto obj = std::make_unique<Type>();                                                                   \
-                *obj = deserialize<Type>(node);                                                                        \
-                obj->sectionName = node.key;                                                                           \
-                return obj;                                                                                            \
-            });                                                                                                        \
+            StaticSectionRegistry::registerFactory(SectionName,                                                        \
+                                                   [](const ConfigNode &node) -> std::unique_ptr<BaseSection> {        \
+                                                       auto obj = std::make_unique<Type>(deserialize<Type>(node));     \
+                                                       obj->sectionName = node.key;                                    \
+                                                       return obj;                                                     \
+                                                   });                                                                 \
         }                                                                                                              \
     };                                                                                                                 \
     static Type##StaticRegistrar Type##_static_registrar_instance;                                                     \
@@ -99,8 +104,7 @@ public:
         {                                                                                                              \
             DynamicSectionRegistry::registerFactory(                                                                   \
                 TypeName, [](const ConfigNode &node) -> std::unique_ptr<BaseDynamicSection> {                          \
-                    auto obj = std::make_unique<Type>();                                                               \
-                    *obj = deserialize<Type>(node);                                                                    \
+                    auto obj = std::make_unique<Type>(deserialize<Type>(node));                                        \
                     obj->sectionName = node.key;                                                                       \
                     obj->type = TypeName;                                                                              \
                     obj->compileMatches();                                                                             \

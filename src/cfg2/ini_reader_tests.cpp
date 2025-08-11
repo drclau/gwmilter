@@ -356,3 +356,244 @@ match = .*@fourth\.com
     EXPECT_EQ(root.children[3].findChild("encryption_protocol")->value, "pdf");
     EXPECT_EQ(root.children[4].findChild("encryption_protocol")->value, "smime");
 }
+
+// Unicode/Encoding Tests
+TEST_F(IniReaderTest, ParsesUTF8Characters)
+{
+    writeTestFile("utf8.ini", R"([配置]
+用户名 = José
+密码 = pάssword123
+路径 = /home/müller/config.txt
+
+[français]
+nom = François
+ville = Montréal
+émoji = 🔐✅
+)");
+
+    ConfigNode root = parseIniFile(getTestFilePath("utf8.ini"));
+
+    EXPECT_EQ(root.children.size(), 2);
+
+    // Test Chinese section with mixed language values
+    const ConfigNode *config = root.findChild("配置");
+    ASSERT_NE(config, nullptr);
+    EXPECT_EQ(config->children.size(), 3);
+
+    const ConfigNode *username = config->findChild("用户名");
+    ASSERT_NE(username, nullptr);
+    EXPECT_EQ(username->value, "José");
+
+    const ConfigNode *password = config->findChild("密码");
+    ASSERT_NE(password, nullptr);
+    EXPECT_EQ(password->value, "pάssword123");
+
+    const ConfigNode *path = config->findChild("路径");
+    ASSERT_NE(path, nullptr);
+    EXPECT_EQ(path->value, "/home/müller/config.txt");
+
+    // Test French section with accented characters and emojis
+    const ConfigNode *french = root.findChild("français");
+    ASSERT_NE(french, nullptr);
+    EXPECT_EQ(french->children.size(), 3);
+
+    const ConfigNode *nom = french->findChild("nom");
+    ASSERT_NE(nom, nullptr);
+    EXPECT_EQ(nom->value, "François");
+
+    const ConfigNode *ville = french->findChild("ville");
+    ASSERT_NE(ville, nullptr);
+    EXPECT_EQ(ville->value, "Montréal");
+
+    const ConfigNode *emoji = french->findChild("émoji");
+    ASSERT_NE(emoji, nullptr);
+    EXPECT_EQ(emoji->value, "🔐✅");
+}
+
+TEST_F(IniReaderTest, ParsesNonASCISectionNames)
+{
+    writeTestFile("non_ascii.ini", R"([Ελληνικά]
+language = Greek
+alphabet = αβγδε
+
+[русский]
+language = Russian  
+alphabet = абвгд
+
+[العربية]
+language = Arabic
+direction = rtl
+)");
+
+    ConfigNode root = parseIniFile(getTestFilePath("non_ascii.ini"));
+
+    EXPECT_EQ(root.children.size(), 3);
+
+    // Test Greek section
+    const ConfigNode *greek = root.findChild("Ελληνικά");
+    ASSERT_NE(greek, nullptr);
+    const ConfigNode *greek_lang = greek->findChild("language");
+    ASSERT_NE(greek_lang, nullptr);
+    EXPECT_EQ(greek_lang->value, "Greek");
+    const ConfigNode *greek_alpha = greek->findChild("alphabet");
+    ASSERT_NE(greek_alpha, nullptr);
+    EXPECT_EQ(greek_alpha->value, "αβγδε");
+
+    // Test Russian section
+    const ConfigNode *russian = root.findChild("русский");
+    ASSERT_NE(russian, nullptr);
+    const ConfigNode *russian_lang = russian->findChild("language");
+    ASSERT_NE(russian_lang, nullptr);
+    EXPECT_EQ(russian_lang->value, "Russian");
+
+    // Test Arabic section
+    const ConfigNode *arabic = root.findChild("العربية");
+    ASSERT_NE(arabic, nullptr);
+    const ConfigNode *arabic_dir = arabic->findChild("direction");
+    ASSERT_NE(arabic_dir, nullptr);
+    EXPECT_EQ(arabic_dir->value, "rtl");
+}
+
+// Edge Case Tests
+TEST_F(IniReaderTest, HandlesDuplicateKeys)
+{
+    writeTestFile("duplicates.ini", R"([section]
+key1 = first_value
+key2 = normal_value
+key1 = second_value
+key3 = another_value
+key1 = third_value
+)");
+
+    ConfigNode root = parseIniFile(getTestFilePath("duplicates.ini"));
+
+    const ConfigNode *section = root.findChild("section");
+    ASSERT_NE(section, nullptr);
+
+    // SimpleIni typically keeps the last value for duplicate keys
+    const ConfigNode *key1 = section->findChild("key1");
+    ASSERT_NE(key1, nullptr);
+    EXPECT_EQ(key1->value, "third_value");
+
+    const ConfigNode *key2 = section->findChild("key2");
+    ASSERT_NE(key2, nullptr);
+    EXPECT_EQ(key2->value, "normal_value");
+
+    const ConfigNode *key3 = section->findChild("key3");
+    ASSERT_NE(key3, nullptr);
+    EXPECT_EQ(key3->value, "another_value");
+}
+
+TEST_F(IniReaderTest, HandlesCaseSensitivity)
+{
+    writeTestFile("case.ini", R"([Section]
+Key = value1
+
+[SECTION]
+KEY = value2
+key = value3
+
+[section]
+Key = value4
+)");
+
+    ConfigNode root = parseIniFile(getTestFilePath("case.ini"));
+
+    // SimpleIni is case-insensitive by default, so sections with same name (different case) merge
+    // The last section definition wins, so we should have 1 section with merged keys
+    EXPECT_EQ(root.children.size(), 1);
+
+    // Find the section (case-insensitive lookup should work)
+    const ConfigNode *section = root.findChild("Section");
+    ASSERT_NE(section, nullptr);
+
+    // The last Key definition should win (case-insensitive for keys too)
+    const ConfigNode *key = section->findChild("Key");
+    ASSERT_NE(key, nullptr);
+    EXPECT_EQ(key->value, "value4"); // Last value from [section] Key = value4
+
+    // For case-insensitive keys, the last key definition should win
+    const ConfigNode *key_lower = section->findChild("key");
+    if (key_lower != nullptr) {
+        // If SimpleIni preserves both KEY and key as separate keys
+        EXPECT_EQ(key_lower->value, "value3");
+    }
+}
+
+TEST_F(IniReaderTest, HandlesExtremelyLongValues)
+{
+    // Create a very long key name and value
+    std::string long_key(500, 'k');
+    std::string long_value(1000, 'v');
+    std::string long_section(200, 's');
+
+    std::string ini_content = "[" + long_section + "]\n";
+    ini_content += long_key + " = " + long_value + "\n";
+    ini_content += "normal_key = normal_value\n";
+
+    writeTestFile("long.ini", ini_content);
+
+    ConfigNode root = parseIniFile(getTestFilePath("long.ini"));
+
+    EXPECT_EQ(root.children.size(), 1);
+
+    const ConfigNode *section = root.findChild(long_section);
+    ASSERT_NE(section, nullptr);
+    EXPECT_EQ(section->children.size(), 2);
+
+    const ConfigNode *long_key_node = section->findChild(long_key);
+    ASSERT_NE(long_key_node, nullptr);
+    EXPECT_EQ(long_key_node->value, long_value);
+
+    const ConfigNode *normal_key = section->findChild("normal_key");
+    ASSERT_NE(normal_key, nullptr);
+    EXPECT_EQ(normal_key->value, "normal_value");
+}
+
+TEST_F(IniReaderTest, PreservesKeyOrderWithinSections)
+{
+    writeTestFile("key_order.ini", R"([section1]
+zebra = last_alphabetically
+apple = first_alphabetically
+middle = middle_value
+aardvark = first_lexically
+
+[section2]
+third = 3
+first = 1
+fourth = 4
+second = 2
+)");
+
+    ConfigNode root = parseIniFile(getTestFilePath("key_order.ini"));
+
+    EXPECT_EQ(root.children.size(), 2);
+
+    // Test section1 key order
+    const ConfigNode *section1 = root.findChild("section1");
+    ASSERT_NE(section1, nullptr);
+    EXPECT_EQ(section1->children.size(), 4);
+
+    // Keys should appear in file order, not alphabetical order
+    EXPECT_EQ(section1->children[0].key, "zebra");
+    EXPECT_EQ(section1->children[1].key, "apple");
+    EXPECT_EQ(section1->children[2].key, "middle");
+    EXPECT_EQ(section1->children[3].key, "aardvark");
+
+    // Test section2 key order
+    const ConfigNode *section2 = root.findChild("section2");
+    ASSERT_NE(section2, nullptr);
+    EXPECT_EQ(section2->children.size(), 4);
+
+    // Keys should appear in file order
+    EXPECT_EQ(section2->children[0].key, "third");
+    EXPECT_EQ(section2->children[1].key, "first");
+    EXPECT_EQ(section2->children[2].key, "fourth");
+    EXPECT_EQ(section2->children[3].key, "second");
+
+    // Verify values are correct to ensure proper parsing
+    EXPECT_EQ(section2->children[0].value, "3");
+    EXPECT_EQ(section2->children[1].value, "1");
+    EXPECT_EQ(section2->children[2].value, "4");
+    EXPECT_EQ(section2->children[3].value, "2");
+}

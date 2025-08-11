@@ -1,105 +1,103 @@
+#include "config_manager.hpp"
 #include "core.hpp"
+#include "signal_handler.hpp"
+#include <chrono>
 #include <filesystem>
 #include <iostream>
+#include <thread>
+#include <unistd.h>
 
 using namespace cfg2;
+
+void printConfig(const Config &config)
+{
+    std::cout << "\n=== Configuration Status ===\n";
+    std::cout << "Milter Socket: " << config.general.milter_socket << "\n";
+    std::cout << "SMTP Server: " << config.general.smtp_server << "\n";
+    std::cout << "Log Type: " << config.general.log_type << "\n";
+    std::cout << "Encryption Sections: " << config.encryptionSections.size() << "\n";
+    for (const auto &section: config.encryptionSections)
+        std::cout << "  - [" << section->sectionName << "] protocol: " << section->encryption_protocol << "\n";
+    std::cout << "============================\n\n";
+}
 
 int main()
 {
     // Show current working directory
     std::cout << "Running in directory: " << std::filesystem::current_path() << "\n\n";
 
-    // Load configuration from INI file
-    ConfigNode root;
+    // Create ConfigManager instance
+    // const std::string configFile = "../src/cfg2/testdata/demo_config.ini";
+    const std::string configFile = "src/cfg2/testdata/demo_config.ini";
+    ConfigManager configMgr;
+
     try {
-        root = parseIniFile("config.ini");
-        std::cout << "Successfully loaded config.ini\n\n";
+        configMgr.initialize(configFile);
+        std::cout << "Successfully initialized ConfigManager with " << configFile << "\n";
     } catch (const std::exception &e) {
-        std::cerr << "Error loading config.ini: " << e.what() << "\n";
-        std::cerr << "Using fallback hardcoded configuration...\n\n";
-
-        // Fallback to hardcoded configuration
-        root = ConfigNode{
-            "config",
-            "",
-            {{"general",
-              "",
-              {{"milter_socket", "unix:/var/run/gwmilter/gwmilter.sock", {}, NodeType::VALUE},
-               {"daemonize", "true", {}, NodeType::VALUE},
-               {"log_type", "syslog", {}, NodeType::VALUE},
-               {"log_facility", "mail", {}, NodeType::VALUE},
-               {"log_priority", "info", {}, NodeType::VALUE},
-               {"smtp_server", "smtp://127.0.0.1", {}, NodeType::VALUE}},
-              NodeType::SECTION},
-             {"pgp",
-              "",
-              {{"encryption_protocol", "pgp", {}, NodeType::VALUE},
-               {"match", ".*@company\\.com,.*@internal\\.org", {}, NodeType::VALUE},
-               {"key_not_found_policy", "retrieve", {}, NodeType::VALUE}},
-              NodeType::SECTION},
-             {"smime",
-              "",
-              {{"encryption_protocol", "smime", {}, NodeType::VALUE},
-               {"match", ".*@smime\\.com", {}, NodeType::VALUE},
-               {"key_not_found_policy", "reject", {}, NodeType::VALUE}},
-              NodeType::SECTION},
-             {"pdf",
-              "",
-              {{"encryption_protocol", "pdf", {}, NodeType::VALUE},
-               {"match", ".*@external\\.com", {}, NodeType::VALUE},
-               {"email_body_replacement", "/etc/gwmilter/pdf_body.txt", {}, NodeType::VALUE},
-               {"pdf_main_page_if_missing", "/etc/gwmilter/pdf_cover.pdf", {}, NodeType::VALUE},
-               {"pdf_password", "secret123", {}, NodeType::VALUE}},
-              NodeType::SECTION},
-             {"none",
-              "",
-              {{"encryption_protocol", "none", {}, NodeType::VALUE}, {"match", ".*@public\\.org", {}, NodeType::VALUE}},
-              NodeType::SECTION}},
-            NodeType::ROOT};
+        std::cerr << "Failed to initialize ConfigManager: " << e.what() << "\n";
+        return 1;
     }
 
-    Config config = parse<Config>(root);
-
-    std::cout << "=== General Configuration ===\n";
-    std::cout << "Milter Socket: " << config.general.milter_socket << "\n";
-    std::cout << "Daemonize: " << (config.general.daemonize ? "true" : "false") << "\n";
-    std::cout << "Log Type: " << config.general.log_type << "\n";
-    std::cout << "Log Facility: " << config.general.log_facility << "\n";
-    std::cout << "Log Priority: " << config.general.log_priority << "\n";
-    std::cout << "SMTP Server: " << config.general.smtp_server << "\n\n";
-
-    std::cout << "=== Encryption Sections ===\n";
-    for (const auto &section: config.encryptionSections) {
-        std::cout << "[" << section->sectionName << "] (protocol: " << section->encryption_protocol << ")\n";
-
-        if (auto *pgp = dynamic_cast<PgpEncryptionSection *>(section.get())) {
-            std::cout << "  Key Not Found Policy: " << pgp->key_not_found_policy << "\n";
-        } else if (auto *smime = dynamic_cast<SmimeEncryptionSection *>(section.get())) {
-            std::cout << "  Key Not Found Policy: " << smime->key_not_found_policy << "\n";
-        } else if (auto *pdf = dynamic_cast<PdfEncryptionSection *>(section.get())) {
-            std::cout << "  Email Body Replacement: " << pdf->email_body_replacement << "\n";
-            std::cout << "  PDF Main Page If Missing: " << pdf->pdf_main_page_if_missing << "\n";
-            std::cout << "  PDF Password: " << pdf->pdf_password << "\n";
-        }
-        std::cout << "\n";
+    // Initialize signal handler
+    if (!SignalHandler::initialize()) {
+        std::cerr << "Failed to initialize signal handler\n";
+        return 1;
     }
 
-    std::cout << "=== Match Testing ===\n";
+    // Get initial configuration
+    auto config = configMgr.getConfig();
+    if (!config) {
+        std::cerr << "No configuration available\n";
+        return 1;
+    }
+
+    printConfig(*config);
+
+    std::cout << "=== Demo Loop ===\n";
+    std::cout << "This demo will run in a loop checking for config changes.\n";
+    std::cout << "To test SIGHUP reload:\n";
+    std::cout << "1. Edit the config file: " << configFile << "\n";
+    std::cout << "2. Send SIGHUP signal: kill -HUP " << getpid() << "\n";
+    std::cout << "3. Watch the configuration reload automatically\n";
+    std::cout << "Press Ctrl+C to exit.\n\n";
 
     // Test cases for the find_match functionality
-    std::vector<std::string> testValues = {"user@company.com", "admin@internal.org", "client@external.com",
-                                           "newsletter@public.org", "support@example.com"};
+    std::vector<std::string> testValues = {"pgp-user@example.com", "user-smime@example.com", "user-pdf@example.com",
+                                           "user@example.com"};
 
-    for (const auto &testValue: testValues) {
-        std::cout << "Looking for match for: '" << testValue << "' -> ";
-
-        auto *matchedSection = config.find_match(testValue);
-        if (matchedSection) {
-            std::cout << "Found in section [" << matchedSection->sectionName
-                      << "] (protocol: " << matchedSection->encryption_protocol << ")\n";
-        } else {
-            std::cout << "No match found\n";
+    // Main loop - check for signals and demonstrate current config
+    int iteration = 0;
+    while (true) {
+        // Check if reload was requested via SIGHUP
+        if (SignalHandler::checkAndClearReloadRequest()) {
+            std::cout << "\n*** SIGHUP received - reloading configuration ***\n";
+            if (configMgr.reload()) {
+                // Get the updated config
+                config = configMgr.getConfig();
+                if (config)
+                    printConfig(*config);
+            }
         }
+
+        // Every 10 iterations, show current match testing
+        if (iteration % 10 == 0) {
+            std::cout << "Match Testing (iteration " << iteration << "):\n";
+            for (const auto &testValue: testValues) {
+                auto *matchedSection = config->find_match(testValue);
+                if (matchedSection) {
+                    std::cout << "  '" << testValue << "' -> [" << matchedSection->sectionName << "] ("
+                              << matchedSection->encryption_protocol << ")\n";
+                } else {
+                    std::cout << "  '" << testValue << "' -> No match\n";
+                }
+            }
+            std::cout << "\n";
+        }
+
+        // Sleep for a short time
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        iteration++;
     }
 
     return 0;

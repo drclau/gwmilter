@@ -27,8 +27,23 @@ cmake --build build -- -j10
 - `EPDFCRYPT_PATH=../libs` - Path to the epdfcrypt library
 - `-j10` - Use 10 parallel build jobs
 
-## Testing Principles
+## Testing
+
+### cfg2 Tests
+
+To build and run the cfg2 configuration system tests:
+
+```bash
+# Build the tests
+cmake --build build --target cfg2_tests -- -j10
+
+# Run all cfg2 tests
+./build/cfg2_tests
+
+# Run specific test (example)
+./build/cfg2_tests --gtest_filter="*DynamicSectionsWithSameNameAsTypeAreHandledCorrectly*"
+```
+
+### Testing Principles
 
 - Only write unittests for non-trivial functionality (trivial: setters/getters etc.)
-
-- don't `cd` to `build` when running tests

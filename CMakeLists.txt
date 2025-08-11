@@ -126,6 +126,8 @@ add_executable(cfg2_demo
     src/cfg2/section_registry.cpp
     src/cfg2/config.cpp
     src/cfg2/ini_reader.cpp
+    src/cfg2/config_manager.cpp
+    src/cfg2/signal_handler.cpp
 )
 
 target_include_directories(cfg2_demo PRIVATE
@@ -142,6 +144,8 @@ set_target_properties(cfg2_demo PROPERTIES
 
 # Enable testing
 enable_testing()
+include(CTest)
+include(GoogleTest)
 
 # Add cfg2 tests executable with Google Test
 add_executable(cfg2_tests
@@ -150,9 +154,11 @@ add_executable(cfg2_tests
     src/cfg2/config_tests.cpp
     src/cfg2/config_node_tests.cpp
     src/cfg2/ini_reader_tests.cpp
+    src/cfg2/memory_safety_test.cpp
     src/cfg2/section_registry.cpp
     src/cfg2/config.cpp
     src/cfg2/ini_reader.cpp
+    src/cfg2/config_manager.cpp
 )
 
 target_include_directories(cfg2_tests PRIVATE
@@ -170,5 +176,8 @@ set_target_properties(cfg2_tests PROPERTIES
     CXX_STANDARD_REQUIRED ON
 )
 
-# Register the test with CTest
-add_test(NAME cfg2_tests COMMAND cfg2_tests)
+# Register GoogleTest-based tests individually with CTest
+gtest_discover_tests(cfg2_tests
+    DISCOVERY_TIMEOUT 60
+)
+

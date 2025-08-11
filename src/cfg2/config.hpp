@@ -55,7 +55,8 @@ struct Config {
     std::vector<std::unique_ptr<BaseEncryptionSection>> encryptionSections;
 
     // Find first encryption section that matches the given value
-    BaseEncryptionSection *find_match(const std::string &value) const
+    // Returns raw pointer safe as observer - lifetime tied to parent Config shared_ptr
+    const BaseEncryptionSection *find_match(const std::string &value) const
     {
         for (const auto &section: encryptionSections)
             if (section->matches(value))
