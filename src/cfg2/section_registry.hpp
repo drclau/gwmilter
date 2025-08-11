@@ -5,7 +5,6 @@
 #include <functional>
 #include <memory>
 #include <regex>
-#include <unordered_map>
 #include <vector>
 
 namespace cfg2 {
@@ -57,8 +56,6 @@ using DynamicSectionFactory = std::function<std::unique_ptr<BaseDynamicSection>(
 
 // Registry for static sections only
 class StaticSectionRegistry {
-    static std::unordered_map<std::string, StaticSectionFactory> factories;
-
 public:
     static void registerFactory(const std::string &sectionName, const StaticSectionFactory &factory);
     static std::unique_ptr<BaseSection> create(const std::string &sectionName, const ConfigNode &node);
@@ -67,8 +64,6 @@ public:
 
 // Registry for dynamic sections only
 class DynamicSectionRegistry {
-    static std::unordered_map<std::string, DynamicSectionFactory> factories;
-
 public:
     static void registerFactory(const std::string &type, const DynamicSectionFactory &factory);
     static std::unique_ptr<BaseDynamicSection> create(const std::string &type, const ConfigNode &node);

@@ -1,10 +1,10 @@
 #pragma once
 
 #include "config_node.hpp"
-#include <memory>
 #include <sstream>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 namespace cfg2 {
 
@@ -32,16 +32,6 @@ template<typename Class, typename Field> FieldDesc<Class, Field> field(const std
 
 template<typename T> struct is_deserializable_struct : std::false_type { };
 
-// --------------------------------------------------------------------------------
-// Trait to mark structs as validatable
-
-template<typename T> struct has_validation : std::false_type { };
-
-// Validation function signature (default no-op implementation)
-template<typename T> void validate(const T &obj)
-{
-    // Default implementation does nothing
-}
 
 // --------------------------------------------------------------------------------
 // Deserializer implementation
@@ -49,62 +39,63 @@ template<typename T> void validate(const T &obj)
 template<typename T, typename... Fields> class Deserializer {
     std::tuple<Fields...> fields;
 
-    template<std::size_t I = 0> void deserializeFields(T &obj, const ConfigNode &node) const
+    template<std::size_t I> void deserializeOne(T &obj, const ConfigNode &node) const
     {
-        if constexpr (I < sizeof...(Fields)) {
-            const auto &fieldDesc = std::get<I>(fields);
-            const ConfigNode *childNode = node.findChild(fieldDesc.name);
+        const auto &fieldDesc = std::get<I>(fields);
+        const ConfigNode *childNode = node.findChild(fieldDesc.name);
+        if (!childNode)
+            return;
 
-            if (childNode) {
-                using FieldType = std::decay_t<decltype(obj.*fieldDesc.ptr)>;
+        using FieldType = std::decay_t<decltype(obj.*fieldDesc.ptr)>;
 
-                if constexpr (is_deserializable_struct<FieldType>::value) {
-                    // Nested struct
-                    obj.*(fieldDesc.ptr) = deserialize<FieldType>(*childNode);
-                } else if constexpr (is_vector<FieldType>::value) {
-                    // std::vector<...>
-                    using Elem = typename FieldType::value_type;
-                    auto &vec = obj.*(fieldDesc.ptr);
-                    vec.clear();
+        if constexpr (is_deserializable_struct<FieldType>::value) {
+            // Nested struct
+            obj.*(fieldDesc.ptr) = deserialize<FieldType>(*childNode);
+        } else if constexpr (is_vector<FieldType>::value) {
+            // std::vector<...>
+            using Elem = typename FieldType::value_type;
+            auto &vec = obj.*(fieldDesc.ptr);
+            vec.clear();
 
-                    // Check if we have a comma-separated value or child nodes
-                    if (!childNode->value.empty()) {
-                        // Parse comma-separated string
-                        std::stringstream ss(childNode->value);
-                        std::string token;
-                        while (std::getline(ss, token, ',')) {
-                            // Trim whitespace
-                            size_t start = token.find_first_not_of(" \t");
-                            if (start == std::string::npos)
-                                continue;
-                            size_t end = token.find_last_not_of(" \t");
-                            token = token.substr(start, end - start + 1);
+            // Check if we have a comma-separated value or child nodes
+            if (!childNode->value.empty()) {
+                // Parse comma-separated string
+                std::stringstream ss(childNode->value);
+                std::string token;
+                while (std::getline(ss, token, ',')) {
+                    // Trim whitespace
+                    size_t start = token.find_first_not_of(" \t");
+                    if (start == std::string::npos)
+                        continue;
+                    size_t end = token.find_last_not_of(" \t");
+                    token = token.substr(start, end - start + 1);
 
-                            if (!token.empty()) {
-                                if constexpr (is_deserializable_struct<Elem>::value) {
-                                    // Cannot deserialize structs from comma-separated strings
-                                    throw std::runtime_error("Cannot parse nested structs from comma-separated values");
-                                } else {
-                                    vec.push_back(fromString<Elem>(token));
-                                }
-                            }
+                    if (!token.empty()) {
+                        if constexpr (is_deserializable_struct<Elem>::value) {
+                            // Cannot deserialize structs from comma-separated strings
+                            throw std::runtime_error("Cannot parse nested structs from comma-separated values");
+                        } else {
+                            vec.push_back(fromString<Elem>(token));
                         }
-                    } else {
-                        // Fall back to child node approach
-                        for (const auto &kid: childNode->children)
-                            if constexpr (is_deserializable_struct<Elem>::value)
-                                vec.push_back(deserialize<Elem>(kid));
-                            else
-                                vec.push_back(fromString<Elem>(kid.value));
                     }
-                } else {
-                    // Basic type
-                    obj.*(fieldDesc.ptr) = fromString<FieldType>(childNode->value);
                 }
+            } else {
+                // Fall back to child node approach
+                for (const auto &kid: childNode->children)
+                    if constexpr (is_deserializable_struct<Elem>::value)
+                        vec.push_back(deserialize<Elem>(kid));
+                    else
+                        vec.push_back(fromString<Elem>(kid.value));
             }
-
-            deserializeFields<I + 1>(obj, node);
+        } else {
+            // Basic type
+            obj.*(fieldDesc.ptr) = fromString<FieldType>(childNode->value);
         }
+    }
+
+    template<std::size_t... Is> void deserializeFields(T &obj, const ConfigNode &node, std::index_sequence<Is...>) const
+    {
+        (deserializeOne<Is>(obj, node), ...);
     }
 
 public:
@@ -115,11 +106,10 @@ public:
     T operator()(const ConfigNode &node) const
     {
         T obj{};
-        deserializeFields(obj, node);
+        deserializeFields(obj, node, std::make_index_sequence<sizeof...(Fields)>{});
 
-        // Add validation if available
-        if constexpr (has_validation<T>::value)
-            validate(obj);
+        // All config sections must have validate() method
+        obj.validate();
 
         return obj;
     }
@@ -138,7 +128,7 @@ template<typename T, typename... FieldTs> auto make_deserializer(FieldTs... fiel
 
 #define REGISTER_STRUCT(Type, ...)                                                                                     \
     template<> struct is_deserializable_struct<Type> : std::true_type { };                                             \
-    template<> Type deserialize<Type>(const ConfigNode &node)                                                          \
+    template<> inline Type deserialize<Type>(const ConfigNode &node)                                                   \
     {                                                                                                                  \
         auto deserializer = make_deserializer<Type>(__VA_ARGS__);                                                      \
         return deserializer(node);                                                                                     \
