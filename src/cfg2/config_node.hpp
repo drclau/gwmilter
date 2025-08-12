@@ -49,6 +49,8 @@ struct ConfigNode {
 // Type conversion utilities
 
 // Convert strings to basic types
+// For numeric-like types, enforce strict parsing: only allow optional surrounding whitespace
+// and reject any trailing non-whitespace characters (e.g., "42abc" is invalid)
 template<typename T> T fromString(const std::string &str)
 {
     std::istringstream iss(str);
@@ -59,6 +61,12 @@ template<typename T> T fromString(const std::string &str)
         iss >> value;
         if (iss.fail())
             throw std::runtime_error("Bad conversion from string: " + str);
+
+        // Consume trailing whitespace and ensure we reached the end
+        iss >> std::ws;
+        if (!iss.eof())
+            throw std::runtime_error("Bad conversion (trailing characters) from string: " + str);
+
         return value;
     }
 }

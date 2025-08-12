@@ -21,7 +21,7 @@ struct GeneralSection : BaseSection {
     int smtp_server_timeout = -1;
     bool dump_email_on_panic = false;
     std::string signing_key;
-    std::string strip_headers;
+    std::vector<std::string> strip_headers;
 
     void validate() const
     {

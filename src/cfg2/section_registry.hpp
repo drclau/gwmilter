@@ -38,9 +38,13 @@ struct BaseDynamicSection : BaseSection {
     {
         compiledMatches.clear();
         compiledMatches.reserve(match.size());
+        using std::regex_constants::ECMAScript;
+        using std::regex_constants::nosubs;
+        using std::regex_constants::optimize;
+        const auto flags = ECMAScript | optimize | nosubs;
         for (const auto &pattern: match) {
             try {
-                compiledMatches.emplace_back(pattern);
+                compiledMatches.emplace_back(pattern, flags);
             } catch (const std::regex_error &e) {
                 throw std::invalid_argument("Invalid regex pattern '" + pattern + "': " + e.what());
             }
