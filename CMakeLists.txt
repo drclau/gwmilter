@@ -178,6 +178,6 @@ set_target_properties(cfg2_tests PROPERTIES
 
 # Register GoogleTest-based tests individually with CTest
 gtest_discover_tests(cfg2_tests
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     DISCOVERY_TIMEOUT 60
 )
-

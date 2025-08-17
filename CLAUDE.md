@@ -1,5 +1,13 @@
 # CLAUDE.md - Build Instructions
 
+## Coding Principles
+
+- When writing code, prefer idiomatic C++17 and modern solutions.
+
+### Testing Principles
+
+- Only write unittests for non-trivial functionality (trivial: setters/getters etc.), unless specifically asked to do otherwise.
+
 ## Building the Project
 
 To build the gwmilter project, use the following commands:
@@ -31,6 +39,7 @@ cmake --build build -- -j10
 
 ### cfg2 Tests
 
+When running project binaries, run them from the project root, by using relative path to the binary.
 To build and run the cfg2 configuration system tests:
 
 ```bash
@@ -44,6 +53,3 @@ cmake --build build --target cfg2_tests -- -j10
 ./build/cfg2_tests --gtest_filter="*DynamicSectionsWithSameNameAsTypeAreHandledCorrectly*"
 ```
 
-### Testing Principles
-
-- Only write unittests for non-trivial functionality (trivial: setters/getters etc.)

@@ -74,44 +74,34 @@ public:
     static bool hasType(const std::string &type);
 };
 
-// Macro to register static section types
-#define REGISTER_STATIC_SECTION(Type, SectionName, ...)                                                                \
+// Header-safe variant that ensures single registration across TUs using inline variable
+#define REGISTER_STATIC_SECTION_INLINE(Type, SectionName, ...)                                                         \
     static_assert(std::is_base_of_v<BaseSection, Type>, #Type " must inherit from BaseSection");                       \
     REGISTER_STRUCT(Type, __VA_ARGS__)                                                                                 \
-    namespace {                                                                                                        \
-    struct Type##StaticRegistrar {                                                                                     \
-        Type##StaticRegistrar()                                                                                        \
-        {                                                                                                              \
-            StaticSectionRegistry::registerFactory(SectionName,                                                        \
-                                                   [](const ConfigNode &node) -> std::unique_ptr<BaseSection> {        \
-                                                       auto obj = std::make_unique<Type>(deserialize<Type>(node));     \
-                                                       obj->sectionName = node.key;                                    \
-                                                       return obj;                                                     \
-                                                   });                                                                 \
-        }                                                                                                              \
-    };                                                                                                                 \
-    static Type##StaticRegistrar Type##_static_registrar_instance;                                                     \
-    }
+    inline const bool Type##_static_registered = []() {                                                                \
+        StaticSectionRegistry::registerFactory(                                                                        \
+            SectionName, [](const ConfigNode &node) -> std::unique_ptr<BaseSection> {                                  \
+                auto obj = std::make_unique<Type>(deserialize<Type>(node));                                            \
+                obj->sectionName = node.key;                                                                           \
+                return obj;                                                                                            \
+            });                                                                                                        \
+        return true;                                                                                                   \
+    }();
 
-// Macro to register dynamic section types
-#define REGISTER_DYNAMIC_SECTION(Type, TypeName, ...)                                                                  \
+// Header-safe variant that ensures single registration across TUs using inline variable
+#define REGISTER_DYNAMIC_SECTION_INLINE(Type, TypeName, ...)                                                           \
     static_assert(std::is_base_of_v<BaseDynamicSection, Type>, #Type " must inherit from BaseDynamicSection");         \
     REGISTER_STRUCT(Type, __VA_ARGS__)                                                                                 \
-    namespace {                                                                                                        \
-    struct Type##Registrar {                                                                                           \
-        Type##Registrar()                                                                                              \
-        {                                                                                                              \
-            DynamicSectionRegistry::registerFactory(                                                                   \
-                TypeName, [](const ConfigNode &node) -> std::unique_ptr<BaseDynamicSection> {                          \
-                    auto obj = std::make_unique<Type>(deserialize<Type>(node));                                        \
-                    obj->sectionName = node.key;                                                                       \
-                    obj->type = TypeName;                                                                              \
-                    obj->compileMatches();                                                                             \
-                    return obj;                                                                                        \
-                });                                                                                                    \
-        }                                                                                                              \
-    };                                                                                                                 \
-    static Type##Registrar Type##_registrar_instance;                                                                  \
-    }
+    inline const bool Type##_dynamic_registered = []() {                                                               \
+        DynamicSectionRegistry::registerFactory(                                                                       \
+            TypeName, [](const ConfigNode &node) -> std::unique_ptr<BaseDynamicSection> {                              \
+                auto obj = std::make_unique<Type>(deserialize<Type>(node));                                            \
+                obj->sectionName = node.key;                                                                           \
+                obj->type = TypeName;                                                                                  \
+                obj->compileMatches();                                                                                 \
+                return obj;                                                                                            \
+            });                                                                                                        \
+        return true;                                                                                                   \
+    }();
 
 } // namespace cfg2

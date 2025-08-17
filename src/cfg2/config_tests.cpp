@@ -27,7 +27,8 @@ TEST_F(ConfigTest, ConfigFindMatchWorksCorrectly)
           "",
           {{"milter_socket", "unix:/var/run/gwmilter/gwmilter.sock", {}, NodeType::VALUE},
            {"log_type", "console", {}, NodeType::VALUE},
-           {"smtp_server", "smtp://127.0.0.1", {}, NodeType::VALUE}},
+           {"smtp_server", "smtp://127.0.0.1", {}, NodeType::VALUE},
+           {"signing_key", "/path/to/key", {}, NodeType::VALUE}},
           NodeType::SECTION},
          {"encrypt_internal",
           "",
@@ -100,7 +101,8 @@ TEST_F(ConfigTest, ConfigHandlesMultipleEncryptionSections)
                             "",
                             {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
                              {"log_type", "console", {}, NodeType::VALUE},
-                             {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
+                             {"smtp_server", "smtp://localhost", {}, NodeType::VALUE},
+                             {"signing_key", "/path/to/key", {}, NodeType::VALUE}},
                             NodeType::SECTION},
                            {"pgp1",
                             "",
@@ -147,7 +149,8 @@ TEST_F(ConfigTest, FindMatchReturnsSecondSection)
           "",
           {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
            {"log_type", "console", {}, NodeType::VALUE},
-           {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
+           {"smtp_server", "smtp://localhost", {}, NodeType::VALUE},
+           {"signing_key", "/path/to/key", {}, NodeType::VALUE}},
           NodeType::SECTION},
          {"first_section",
           "",
@@ -206,7 +209,8 @@ TEST_F(ConfigTest, FindMatchReturnsFirstMatchOnly)
           "",
           {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
            {"log_type", "console", {}, NodeType::VALUE},
-           {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
+           {"smtp_server", "smtp://localhost", {}, NodeType::VALUE},
+           {"signing_key", "/path/to/key", {}, NodeType::VALUE}},
           NodeType::SECTION},
          {"first_match",
           "",
@@ -238,7 +242,8 @@ TEST_F(ConfigTest, DynamicSectionsWithSameNameAsTypeAreHandledCorrectly)
           "",
           {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
            {"log_type", "console", {}, NodeType::VALUE},
-           {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
+           {"smtp_server", "smtp://localhost", {}, NodeType::VALUE},
+           {"signing_key", "/path/to/key", {}, NodeType::VALUE}},
           NodeType::SECTION},
          {"pgp", // Section name equals type name "pgp"
           "",
@@ -643,4 +648,111 @@ TEST_F(ConfigValidationTest, ConfigWithOnlyGeneralSectionWorks)
     Config config = parse<Config>(onlyGeneral);
     EXPECT_EQ(config.encryptionSections.size(), 0);
     EXPECT_EQ(config.general.milter_socket, "unix:/tmp/test.sock");
+}
+
+// Cross-section validation tests
+TEST_F(ConfigValidationTest, SigningKeyRequiredForMultipleEncryptionSections)
+{
+    ConfigNode multipleWithoutSigningKey{"config",
+                                        "",
+                                        {{"general",
+                                          "",
+                                          {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
+                                           {"log_type", "console", {}, NodeType::VALUE},
+                                           {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
+                                          NodeType::SECTION},
+                                         {"pgp_section",
+                                          "",
+                                          {{"encryption_protocol", "pgp", {}, NodeType::VALUE},
+                                           {"match", ".*@example.com", {}, NodeType::VALUE}},
+                                          NodeType::SECTION},
+                                         {"pdf_section",
+                                          "",
+                                          {{"encryption_protocol", "pdf", {}, NodeType::VALUE},
+                                           {"match", ".*@test.com", {}, NodeType::VALUE}},
+                                          NodeType::SECTION}},
+                                        NodeType::ROOT};
+
+    EXPECT_THROW(parse<Config>(multipleWithoutSigningKey), std::invalid_argument);
+}
+
+TEST_F(ConfigValidationTest, SmtpServerRequiredForMultipleEncryptionSections)
+{
+    ConfigNode multipleWithoutSmtp{"config",
+                                  "",
+                                  {{"general",
+                                    "",
+                                    {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
+                                     {"log_type", "console", {}, NodeType::VALUE},
+                                     {"signing_key", "/path/to/key", {}, NodeType::VALUE},
+                                     {"smtp_server", "", {}, NodeType::VALUE}},
+                                    NodeType::SECTION},
+                                   {"pgp_section",
+                                    "",
+                                    {{"encryption_protocol", "pgp", {}, NodeType::VALUE},
+                                     {"match", ".*@example.com", {}, NodeType::VALUE}},
+                                    NodeType::SECTION},
+                                   {"pdf_section",
+                                    "",
+                                    {{"encryption_protocol", "pdf", {}, NodeType::VALUE},
+                                     {"match", ".*@test.com", {}, NodeType::VALUE}},
+                                    NodeType::SECTION}},
+                                  NodeType::ROOT};
+
+    EXPECT_THROW(parse<Config>(multipleWithoutSmtp), std::invalid_argument);
+}
+
+TEST_F(ConfigValidationTest, CrossSectionValidationPassesWithBothFields)
+{
+    ConfigNode validMultiple{"config",
+                            "",
+                            {{"general",
+                              "",
+                              {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
+                               {"log_type", "console", {}, NodeType::VALUE},
+                               {"smtp_server", "smtp://localhost", {}, NodeType::VALUE},
+                               {"signing_key", "/path/to/key", {}, NodeType::VALUE}},
+                              NodeType::SECTION},
+                             {"pgp_section",
+                              "",
+                              {{"encryption_protocol", "pgp", {}, NodeType::VALUE},
+                               {"match", ".*@example.com", {}, NodeType::VALUE}},
+                              NodeType::SECTION},
+                             {"pdf_section",
+                              "",
+                              {{"encryption_protocol", "pdf", {}, NodeType::VALUE},
+                               {"match", ".*@test.com", {}, NodeType::VALUE}},
+                              NodeType::SECTION}},
+                            NodeType::ROOT};
+
+    EXPECT_NO_THROW({ Config config = parse<Config>(validMultiple); });
+    
+    Config config = parse<Config>(validMultiple);
+    EXPECT_EQ(config.encryptionSections.size(), 2);
+    EXPECT_EQ(config.general.signing_key, "/path/to/key");
+    EXPECT_EQ(config.general.smtp_server, "smtp://localhost");
+}
+
+TEST_F(ConfigValidationTest, SingleEncryptionSectionDoesNotRequireSigningKey)
+{
+    ConfigNode singleSection{"config",
+                            "",
+                            {{"general",
+                              "",
+                              {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
+                               {"log_type", "console", {}, NodeType::VALUE},
+                               {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
+                              NodeType::SECTION},
+                             {"pgp_section",
+                              "",
+                              {{"encryption_protocol", "pgp", {}, NodeType::VALUE},
+                               {"match", ".*@example.com", {}, NodeType::VALUE}},
+                              NodeType::SECTION}},
+                            NodeType::ROOT};
+
+    EXPECT_NO_THROW({ Config config = parse<Config>(singleSection); });
+    
+    Config config = parse<Config>(singleSection);
+    EXPECT_EQ(config.encryptionSections.size(), 1);
+    EXPECT_TRUE(config.general.signing_key.empty());
 }
