@@ -27,8 +27,7 @@ int main()
     std::cout << "Running in directory: " << std::filesystem::current_path() << "\n\n";
 
     // Create ConfigManager instance
-    // const std::string configFile = "../src/cfg2/testdata/demo_config.ini";
-    const std::string configFile = "src/cfg2/testdata/demo_config.ini";
+    const std::string configFile = "src/cfg2/testdata/config.ini";
     ConfigManager configMgr;
 
     try {

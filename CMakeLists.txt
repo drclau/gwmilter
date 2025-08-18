@@ -167,7 +167,6 @@ target_include_directories(cfg2_tests PRIVATE
 )
 
 target_link_libraries(cfg2_tests PRIVATE
-    GTest::gtest
     GTest::gtest_main
 )
 

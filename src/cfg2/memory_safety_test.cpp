@@ -12,7 +12,7 @@ TEST(MemorySafetyTest, ConfigReloadThreadSafety)
 {
     std::cout << "=== Memory Safety Test ===\n";
 
-    ConfigManager configMgr("src/cfg2/testdata/demo_config.ini");
+    ConfigManager configMgr("src/cfg2/testdata/config.ini");
 
     // Get initial config
     auto initial_config = configMgr.getConfig();
