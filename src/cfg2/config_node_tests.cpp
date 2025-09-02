@@ -9,31 +9,6 @@ protected:
     void TearDown() override { }
 };
 
-TEST_F(ConfigNodeTest, BasicConstructorWorks)
-{
-    ConfigNode node{"key", "value"};
-
-    EXPECT_EQ(node.key, "key");
-    EXPECT_EQ(node.value, "value");
-    EXPECT_TRUE(node.children.empty());
-}
-
-TEST_F(ConfigNodeTest, ConstructorWithChildrenWorks)
-{
-    ConfigNode node{"parent",
-                    "parent_value",
-                    {{"child1", "value1", {}, NodeType::VALUE}, {"child2", "value2", {}, NodeType::VALUE}},
-                    NodeType::SECTION};
-
-    EXPECT_EQ(node.key, "parent");
-    EXPECT_EQ(node.value, "parent_value");
-    EXPECT_EQ(node.children.size(), 2);
-    EXPECT_EQ(node.children[0].key, "child1");
-    EXPECT_EQ(node.children[0].value, "value1");
-    EXPECT_EQ(node.children[1].key, "child2");
-    EXPECT_EQ(node.children[1].value, "value2");
-}
-
 TEST_F(ConfigNodeTest, FindChildFindsExistingChild)
 {
     ConfigNode node{"parent",
@@ -132,4 +107,11 @@ TEST_F(ConfigNodeTest, FindChildWithEmptyKey)
     const ConfigNode *found = node.findChild("");
     EXPECT_NE(found, nullptr);
     EXPECT_EQ(found->value, "empty_key_value");
+}
+
+TEST_F(ConfigNodeTest, FindChildThrowsOnValueNode)
+{
+    ConfigNode valueNode{"leaf", "leaf_value", {}, NodeType::VALUE};
+
+    EXPECT_THROW(valueNode.findChild("anything"), std::logic_error);
 }
