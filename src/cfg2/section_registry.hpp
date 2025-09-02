@@ -61,9 +61,12 @@ using DynamicSectionFactory = std::function<std::unique_ptr<BaseDynamicSection>(
 // Registry for static sections only
 class StaticSectionRegistry {
 public:
-    static void registerFactory(const std::string &sectionName, const StaticSectionFactory &factory);
+    static void registerFactory(const std::string &sectionName, const StaticSectionFactory &factory,
+                                bool mandatory = false);
     static std::unique_ptr<BaseSection> create(const std::string &sectionName, const ConfigNode &node);
     static bool hasSection(const std::string &sectionName);
+    static bool isMandatory(const std::string &sectionName);
+    static std::vector<std::string> getMandatorySections();
 };
 
 // Registry for dynamic sections only
@@ -80,11 +83,29 @@ public:
     REGISTER_STRUCT(Type, __VA_ARGS__)                                                                                 \
     inline const bool Type##_static_registered = []() {                                                                \
         StaticSectionRegistry::registerFactory(                                                                        \
-            SectionName, [](const ConfigNode &node) -> std::unique_ptr<BaseSection> {                                  \
+            SectionName,                                                                                               \
+            [](const ConfigNode &node) -> std::unique_ptr<BaseSection> {                                               \
                 auto obj = std::make_unique<Type>(deserialize<Type>(node));                                            \
                 obj->sectionName = node.key;                                                                           \
                 return obj;                                                                                            \
-            });                                                                                                        \
+            },                                                                                                         \
+            false);                                                                                                    \
+        return true;                                                                                                   \
+    }();
+
+// Mandatory version of the registration macro
+#define REGISTER_STATIC_SECTION_MANDATORY(Type, SectionName, ...)                                                      \
+    static_assert(std::is_base_of_v<BaseSection, Type>, #Type " must inherit from BaseSection");                       \
+    REGISTER_STRUCT(Type, __VA_ARGS__)                                                                                 \
+    inline const bool Type##_static_registered = []() {                                                                \
+        StaticSectionRegistry::registerFactory(                                                                        \
+            SectionName,                                                                                               \
+            [](const ConfigNode &node) -> std::unique_ptr<BaseSection> {                                               \
+                auto obj = std::make_unique<Type>(deserialize<Type>(node));                                            \
+                obj->sectionName = node.key;                                                                           \
+                return obj;                                                                                            \
+            },                                                                                                         \
+            true);                                                                                                     \
         return true;                                                                                                   \
     }();
 
@@ -93,14 +114,14 @@ public:
     static_assert(std::is_base_of_v<BaseDynamicSection, Type>, #Type " must inherit from BaseDynamicSection");         \
     REGISTER_STRUCT(Type, __VA_ARGS__)                                                                                 \
     inline const bool Type##_dynamic_registered = []() {                                                               \
-        DynamicSectionRegistry::registerFactory(                                                                       \
-            TypeName, [](const ConfigNode &node) -> std::unique_ptr<BaseDynamicSection> {                              \
-                auto obj = std::make_unique<Type>(deserialize<Type>(node));                                            \
-                obj->sectionName = node.key;                                                                           \
-                obj->type = TypeName;                                                                                  \
-                obj->compileMatches();                                                                                 \
-                return obj;                                                                                            \
-            });                                                                                                        \
+        DynamicSectionRegistry::registerFactory(TypeName,                                                              \
+                                                [](const ConfigNode &node) -> std::unique_ptr<BaseDynamicSection> {    \
+                                                    auto obj = std::make_unique<Type>(deserialize<Type>(node));        \
+                                                    obj->sectionName = node.key;                                       \
+                                                    obj->type = TypeName;                                              \
+                                                    obj->compileMatches();                                             \
+                                                    return obj;                                                        \
+                                                });                                                                    \
         return true;                                                                                                   \
     }();
 

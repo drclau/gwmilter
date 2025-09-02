@@ -1,13 +1,13 @@
 #pragma once
 
 #include "section_registry.hpp"
+#include <regex>
+#include <type_traits>
 #include <vector>
 
 namespace cfg2 {
 
-// ============= INI CONFIGURATION EXAMPLE =============
-
-// Static general section - always present
+// Static "general" section
 struct GeneralSection : BaseSection {
     std::string milter_socket;
     bool daemonize = false;
@@ -32,28 +32,31 @@ struct GeneralSection : BaseSection {
             throw std::invalid_argument("log_type must be 'console' or 'syslog'");
 
         if (milter_timeout < -1)
-            throw std::invalid_argument("milter_timeout must be >= -1 (-1 means infinite)");
+            throw std::invalid_argument("milter_timeout must be >= -1");
 
         if (smtp_server_timeout < -1)
-            throw std::invalid_argument("smtp_server_timeout must be >= -1 (-1 means infinite)");
+            throw std::invalid_argument("smtp_server_timeout must be >= -1");
 
-        if (!smtp_server.empty() && smtp_server.find("://") == std::string::npos)
-            throw std::invalid_argument("smtp_server must be a valid URL (e.g., smtp://host:port)");
+        if (!smtp_server.empty()) {
+            static const std::regex smtp_pattern(R"(^smtps?://.+)");
+            if (!std::regex_match(smtp_server, smtp_pattern))
+                throw std::invalid_argument("smtp_server must start with 'smtp://' or 'smtps://' and include a host");
+        }
     }
 };
 
-// Register GeneralSection next to its definition
-REGISTER_STATIC_SECTION_INLINE(GeneralSection, "general", field("milter_socket", &GeneralSection::milter_socket),
-                               field("daemonize", &GeneralSection::daemonize), field("user", &GeneralSection::user),
-                               field("group", &GeneralSection::group), field("log_type", &GeneralSection::log_type),
-                               field("log_facility", &GeneralSection::log_facility),
-                               field("log_priority", &GeneralSection::log_priority),
-                               field("milter_timeout", &GeneralSection::milter_timeout),
-                               field("smtp_server", &GeneralSection::smtp_server),
-                               field("smtp_server_timeout", &GeneralSection::smtp_server_timeout),
-                               field("dump_email_on_panic", &GeneralSection::dump_email_on_panic),
-                               field("signing_key", &GeneralSection::signing_key),
-                               field("strip_headers", &GeneralSection::strip_headers))
+// Register GeneralSection as mandatory
+REGISTER_STATIC_SECTION_MANDATORY(GeneralSection, "general", field("milter_socket", &GeneralSection::milter_socket),
+                                  field("daemonize", &GeneralSection::daemonize), field("user", &GeneralSection::user),
+                                  field("group", &GeneralSection::group), field("log_type", &GeneralSection::log_type),
+                                  field("log_facility", &GeneralSection::log_facility),
+                                  field("log_priority", &GeneralSection::log_priority),
+                                  field("milter_timeout", &GeneralSection::milter_timeout),
+                                  field("smtp_server", &GeneralSection::smtp_server),
+                                  field("smtp_server_timeout", &GeneralSection::smtp_server_timeout),
+                                  field("dump_email_on_panic", &GeneralSection::dump_email_on_panic),
+                                  field("signing_key", &GeneralSection::signing_key),
+                                  field("strip_headers", &GeneralSection::strip_headers))
 
 // Encryption section types
 struct BaseEncryptionSection : BaseDynamicSection {
@@ -68,14 +71,14 @@ struct PgpEncryptionSection : BaseEncryptionSection {
         if (encryption_protocol != "pgp")
             throw std::invalid_argument("PgpEncryptionSection must have encryption_protocol='pgp'");
 
-        if (!key_not_found_policy.empty() && key_not_found_policy != "discard" && key_not_found_policy != "reject" &&
-            key_not_found_policy != "retrieve")
-        {
-            throw std::invalid_argument("key_not_found_policy must be 'discard', 'reject', or 'retrieve'");
-        }
-
         if (match.empty())
             throw std::invalid_argument("PgpEncryptionSection must have at least one match pattern");
+
+        if (key_not_found_policy.empty())
+            throw std::invalid_argument("key_not_found_policy is mandatory");
+
+        if (key_not_found_policy != "discard" && key_not_found_policy != "reject" && key_not_found_policy != "retrieve")
+            throw std::invalid_argument("key_not_found_policy must be 'discard', 'reject', or 'retrieve'");
     }
 };
 
@@ -91,13 +94,15 @@ struct SmimeEncryptionSection : BaseEncryptionSection {
         if (encryption_protocol != "smime")
             throw std::invalid_argument("SmimeEncryptionSection must have encryption_protocol='smime'");
 
-        if (!key_not_found_policy.empty() && key_not_found_policy != "discard" && key_not_found_policy != "reject") {
-            throw std::invalid_argument(
-                "key_not_found_policy must be 'discard' or 'reject' (retrieve is not supported for S/MIME)");
-        }
-
         if (match.empty())
             throw std::invalid_argument("SmimeEncryptionSection must have at least one match pattern");
+
+        if (key_not_found_policy.empty())
+            throw std::invalid_argument("key_not_found_policy is mandatory");
+
+        if (key_not_found_policy != "discard" && key_not_found_policy != "reject")
+            throw std::invalid_argument(
+                "key_not_found_policy must be 'discard' or 'reject' (retrieve is not supported for S/MIME)");
     }
 };
 
@@ -119,14 +124,14 @@ struct PdfEncryptionSection : BaseEncryptionSection {
         if (encryption_protocol != "pdf")
             throw std::invalid_argument("PdfEncryptionSection must have encryption_protocol='pdf'");
 
+        if (match.empty())
+            throw std::invalid_argument("PdfEncryptionSection must have at least one match pattern");
+
         if (pdf_font_size <= 0.0f)
             throw std::invalid_argument("pdf_font_size must be positive");
 
         if (pdf_margin < 0.0f)
             throw std::invalid_argument("pdf_margin must be non-negative");
-
-        if (match.empty())
-            throw std::invalid_argument("PdfEncryptionSection must have at least one match pattern");
 
         if (pdf_attachment.empty())
             throw std::invalid_argument("pdf_attachment cannot be empty");
@@ -157,17 +162,17 @@ struct NoneEncryptionSection : BaseEncryptionSection {
 REGISTER_DYNAMIC_SECTION_INLINE(NoneEncryptionSection, "none", field("match", &NoneEncryptionSection::match),
                                 field("encryption_protocol", &NoneEncryptionSection::encryption_protocol))
 
-// Main INI configuration
+// Main configuration
 struct Config {
     GeneralSection general;
     std::vector<std::unique_ptr<BaseEncryptionSection>> encryptionSections;
 
-    // Find first encryption section that matches the given value
+    // Find first encryption section that matches the given recipient
     // Returns raw pointer safe as observer - lifetime tied to parent Config shared_ptr
-    const BaseEncryptionSection *find_match(const std::string &value) const
+    const BaseEncryptionSection *find_match(const std::string &rcpt) const
     {
         for (const auto &section: encryptionSections)
-            if (section->matches(value))
+            if (section->matches(rcpt))
                 return section.get();
         return nullptr;
     }
@@ -179,7 +184,7 @@ struct Config {
         if (encryptionSections.size() > 1) {
             if (general.signing_key.empty())
                 throw std::invalid_argument("signing_key is required when multiple encryption sections are present");
-            
+
             if (general.smtp_server.empty())
                 throw std::invalid_argument("smtp_server is required when multiple encryption sections are present");
         }

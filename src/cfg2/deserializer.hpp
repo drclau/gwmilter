@@ -2,6 +2,7 @@
 
 #include "config_node.hpp"
 #include <sstream>
+#include <stdexcept>
 #include <tuple>
 #include <type_traits>
 #include <utility>

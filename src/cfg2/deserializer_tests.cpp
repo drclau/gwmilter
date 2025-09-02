@@ -119,7 +119,8 @@ TEST_F(DeserializerTest, DeserializeVectorFromChildNodes)
                        {"pattern2", ".*@second\\.org", {}, NodeType::VALUE},
                        {"pattern3", ".*@third\\.net", {}, NodeType::VALUE}},
                       NodeType::SECTION},
-                     {"encryption_protocol", "pgp", {}, NodeType::VALUE}},
+                     {"encryption_protocol", "pgp", {}, NodeType::VALUE},
+                     {"key_not_found_policy", "reject", {}, NodeType::VALUE}},
                     NodeType::SECTION};
 
     PgpEncryptionSection result = deserialize<PgpEncryptionSection>(node);
@@ -147,7 +148,8 @@ TEST_F(DeserializerTest, DeserializeVectorWithWhitespace)
     ConfigNode node{"section",
                     "",
                     {{"match", "  .*@test\\.com  , \t.*@example\\.org\t,  ", {}, NodeType::VALUE},
-                     {"encryption_protocol", "pgp", {}, NodeType::VALUE}},
+                     {"encryption_protocol", "pgp", {}, NodeType::VALUE},
+                     {"key_not_found_policy", "reject", {}, NodeType::VALUE}},
                     NodeType::SECTION};
 
     PgpEncryptionSection result = deserialize<PgpEncryptionSection>(node);
@@ -159,11 +161,12 @@ TEST_F(DeserializerTest, DeserializeVectorWithWhitespace)
 
 TEST_F(DeserializerTest, DeserializeSingleElementVector)
 {
-    ConfigNode node{
-        "section",
-        "",
-        {{"match", ".*@single\\.com", {}, NodeType::VALUE}, {"encryption_protocol", "pgp", {}, NodeType::VALUE}},
-        NodeType::SECTION};
+    ConfigNode node{"section",
+                    "",
+                    {{"match", ".*@single\\.com", {}, NodeType::VALUE},
+                     {"encryption_protocol", "pgp", {}, NodeType::VALUE},
+                     {"key_not_found_policy", "reject", {}, NodeType::VALUE}},
+                    NodeType::SECTION};
 
     PgpEncryptionSection result = deserialize<PgpEncryptionSection>(node);
 

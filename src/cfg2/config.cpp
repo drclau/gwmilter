@@ -1,5 +1,6 @@
 #include "config.hpp"
 #include <stdexcept>
+#include <unordered_set>
 
 namespace cfg2 {
 
@@ -7,21 +8,19 @@ namespace cfg2 {
 template<> Config deserialize<Config>(const ConfigNode &node)
 {
     Config config{};
+    std::unordered_set<std::string> foundSections;
 
-    // Process all sections in order using separated registries
     for (const auto &child: node.children) {
-        // Handle static sections by name
         if (StaticSectionRegistry::hasSection(child.key)) {
+            // This is a static section
+            foundSections.insert(child.key);
             auto section = StaticSectionRegistry::create(child.key, child);
 
             if (auto *generalSection = dynamic_cast<GeneralSection *>(section.get()))
                 config.general = *generalSection;
-        }
-        // Handle dynamic sections by their encryption_protocol
-        else
-        {
-            const ConfigNode *protocolNode = child.findChild("encryption_protocol");
-            if (protocolNode && DynamicSectionRegistry::hasType(protocolNode->value)) {
+        } else if (const ConfigNode *protocolNode = child.findChild("encryption_protocol")) {
+            // This is a dynamic section
+            if (DynamicSectionRegistry::hasType(protocolNode->value)) {
                 auto section = DynamicSectionRegistry::create(protocolNode->value, child);
                 if (dynamic_cast<BaseEncryptionSection *>(section.get())) {
                     // Cast succeeded, safe to transfer ownership
@@ -32,8 +31,17 @@ template<> Config deserialize<Config>(const ConfigNode &node)
                                              "' does not derive from BaseEncryptionSection");
                 }
             }
+        } else {
+            // This is an unknown static section (no encryption_protocol field)
+            throw std::invalid_argument("Unknown static section '[" + child.key + "]' in configuration");
         }
     }
+
+    // Validate that all mandatory static sections are present
+    auto mandatorySections = StaticSectionRegistry::getMandatorySections();
+    for (const auto &mandatorySection: mandatorySections)
+        if (foundSections.find(mandatorySection) == foundSections.end())
+            throw std::invalid_argument("Required section '[" + mandatorySection + "]' is missing from configuration");
 
     // Perform cross-section validation
     config.validate();
