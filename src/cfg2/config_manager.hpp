@@ -9,18 +9,12 @@
 namespace cfg2 {
 
 class ConfigManager {
-private:
     std::shared_ptr<Config> current_config_;
-    std::mutex config_mutex_;
+    mutable std::mutex config_mutex_;
     std::string config_file_path_;
 
 public:
-    // Constructor - can optionally initialize with config file
-    ConfigManager() = default;
     explicit ConfigManager(const std::string &config_file);
-
-    // Initialize with config file path (if not done in constructor)
-    void initialize(const std::string &config_file);
 
     // Get current configuration (thread-safe)
     std::shared_ptr<const Config> getConfig() const;
@@ -28,12 +22,9 @@ public:
     // Reload configuration from file
     bool reload();
 
-    // Check if manager is initialized
-    bool isInitialized() const;
+    ~ConfigManager() = default;
 
-    ~ConfigManager();
-
-    // Non-copyable but movable
+    // Non-copyable and non-movable
     ConfigManager(const ConfigManager &) = delete;
     ConfigManager &operator=(const ConfigManager &) = delete;
     ConfigManager(ConfigManager &&) = delete;
