@@ -1,12 +1,17 @@
 #pragma once
 
-#include <atomic>
+#include <csignal>
+#include <mutex>
 
 namespace cfg2 {
 
 class SignalHandler {
 private:
-    static std::atomic<bool> reload_requested_;
+    // Set only from the async signal handler; read/cleared from normal code.
+    // Using volatile sig_atomic_t ensures async-signal-safe access from handlers.
+    static volatile sig_atomic_t reload_requested_;
+    static std::once_flag init_flag_;
+    static bool init_ok_;
     static void sighupHandler(int signal);
 
 public:

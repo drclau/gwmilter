@@ -1,47 +1,54 @@
 #include "signal_handler.hpp"
 #include <csignal>
-#include <iostream>
 #include <unistd.h>
 
 namespace cfg2 {
 
-std::atomic<bool> SignalHandler::reload_requested_{false};
+volatile sig_atomic_t SignalHandler::reload_requested_{0};
+std::once_flag SignalHandler::init_flag_{};
+bool SignalHandler::init_ok_ = false;
 
 void SignalHandler::sighupHandler(int signal)
 {
-    // Signal handlers should only do async-signal-safe operations
-    // Setting an atomic bool is safe
+    // Signal handlers should only do async-signal-safe operations.
+    // Writing to a volatile sig_atomic_t is async-signal-safe.
     if (signal == SIGHUP)
-        reload_requested_.store(true);
+        reload_requested_ = 1;
 }
 
 bool SignalHandler::initialize()
 {
-    // Install SIGHUP handler
-    struct sigaction sa;
-    sa.sa_handler = sighupHandler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
+    std::call_once(init_flag_, [] {
+        // Install SIGHUP handler
+        struct sigaction sa{}; // zero-initialize
+        sa.sa_handler = sighupHandler;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_flags = SA_RESTART; // restart interrupted syscalls where possible
 
-    if (sigaction(SIGHUP, &sa, nullptr) != 0) {
-        std::cerr << "SignalHandler: Failed to install SIGHUP handler" << std::endl;
-        return false;
-    }
+        if (sigaction(SIGHUP, &sa, nullptr) != 0) {
+            init_ok_ = false;
+            return;
+        }
+        init_ok_ = true;
+    });
 
-    std::cout << "SignalHandler: SIGHUP handler installed successfully" << std::endl;
-    std::cout << "SignalHandler: Send SIGHUP to this process (PID: " << getpid() << ") to trigger config reload"
-              << std::endl;
-    return true;
+    return init_ok_;
 }
 
 bool SignalHandler::checkAndClearReloadRequest()
 {
-    return reload_requested_.exchange(false);
+    // Note: We deliberately accept that multiple SIGHUPs may coalesce into
+    // a single reload event. This keeps the handler simple and signal-safe.
+    if (reload_requested_) {
+        reload_requested_ = 0;
+        return true;
+    }
+    return false;
 }
 
 bool SignalHandler::isReloadRequested()
 {
-    return reload_requested_.load();
+    return reload_requested_ != 0;
 }
 
 } // namespace cfg2
