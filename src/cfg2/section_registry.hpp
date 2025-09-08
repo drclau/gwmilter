@@ -21,7 +21,7 @@ struct BaseSection {
 // Base class for all dynamic sections (extends BaseSection with matching functionality)
 struct BaseDynamicSection : BaseSection {
     std::string type;
-    std::vector<std::string> match; // Raw regex patterns from INI
+    std::vector<std::string> match; // Raw regex patterns from config source
     std::vector<std::regex> compiledMatches; // Compiled regex patterns
 
     // Check if any of the compiled regex patterns match the given value
@@ -58,7 +58,7 @@ using StaticSectionFactory = std::function<std::unique_ptr<BaseSection>(const Co
 // Factory function type for creating dynamic sections
 using DynamicSectionFactory = std::function<std::unique_ptr<BaseDynamicSection>(const ConfigNode &)>;
 
-// Registry for static sections only
+// Registry for static sections
 class StaticSectionRegistry {
 public:
     static void registerFactory(const std::string &sectionName, const StaticSectionFactory &factory,
@@ -77,8 +77,8 @@ public:
     static bool hasType(const std::string &type);
 };
 
-// Header-safe variant that ensures single registration across TUs using inline variable
-#define REGISTER_STATIC_SECTION_INLINE(Type, SectionName, ...)                                                         \
+// Shared implementation for static section registration; header-safe via inline variable
+#define REGISTER_STATIC_SECTION_INLINE_IMPL(Type, SectionName, Mandatory, ...)                                         \
     static_assert(std::is_base_of_v<BaseSection, Type>, #Type " must inherit from BaseSection");                       \
     REGISTER_STRUCT(Type, __VA_ARGS__)                                                                                 \
     inline const bool Type##_static_registered = []() {                                                                \
@@ -89,25 +89,15 @@ public:
                 obj->sectionName = node.key;                                                                           \
                 return obj;                                                                                            \
             },                                                                                                         \
-            false);                                                                                                    \
+            (Mandatory));                                                                                              \
         return true;                                                                                                   \
     }();
 
-// Mandatory version of the registration macro
+#define REGISTER_STATIC_SECTION_INLINE(Type, SectionName, ...)                                                         \
+    REGISTER_STATIC_SECTION_INLINE_IMPL(Type, SectionName, false, __VA_ARGS__)
+
 #define REGISTER_STATIC_SECTION_MANDATORY(Type, SectionName, ...)                                                      \
-    static_assert(std::is_base_of_v<BaseSection, Type>, #Type " must inherit from BaseSection");                       \
-    REGISTER_STRUCT(Type, __VA_ARGS__)                                                                                 \
-    inline const bool Type##_static_registered = []() {                                                                \
-        StaticSectionRegistry::registerFactory(                                                                        \
-            SectionName,                                                                                               \
-            [](const ConfigNode &node) -> std::unique_ptr<BaseSection> {                                               \
-                auto obj = std::make_unique<Type>(deserialize<Type>(node));                                            \
-                obj->sectionName = node.key;                                                                           \
-                return obj;                                                                                            \
-            },                                                                                                         \
-            true);                                                                                                     \
-        return true;                                                                                                   \
-    }();
+    REGISTER_STATIC_SECTION_INLINE_IMPL(Type, SectionName, true, __VA_ARGS__)
 
 // Header-safe variant that ensures single registration across TUs using inline variable
 #define REGISTER_DYNAMIC_SECTION_INLINE(Type, TypeName, ...)                                                           \
@@ -115,13 +105,13 @@ public:
     REGISTER_STRUCT(Type, __VA_ARGS__)                                                                                 \
     inline const bool Type##_dynamic_registered = []() {                                                               \
         DynamicSectionRegistry::registerFactory(TypeName,                                                              \
-                                                [](const ConfigNode &node) -> std::unique_ptr<BaseDynamicSection> {    \
-                                                    auto obj = std::make_unique<Type>(deserialize<Type>(node));        \
-                                                    obj->sectionName = node.key;                                       \
-                                                    obj->type = TypeName;                                              \
-                                                    obj->compileMatches();                                             \
-                                                    return obj;                                                        \
-                                                });                                                                    \
+            [](const ConfigNode &node) -> std::unique_ptr<BaseDynamicSection> {    \
+                auto obj = std::make_unique<Type>(deserialize<Type>(node));        \
+                obj->sectionName = node.key;                                       \
+                obj->type = TypeName;                                              \
+                obj->compileMatches();                                             \
+                return obj;                                                        \
+            });                                                                    \
         return true;                                                                                                   \
     }();
 
