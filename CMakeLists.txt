@@ -132,7 +132,13 @@ add_executable(cfg2_demo
 
 target_include_directories(cfg2_demo PRIVATE
     ${PROJECT_SOURCE_DIR}/src
+    ${Boost_INCLUDE_DIRS}
     ${simpleini_SOURCE_DIR}
+)
+
+target_link_libraries(cfg2_demo
+    PRIVATE
+    spdlog::spdlog
 )
 
 # Require C++17 for cfg2_demo (needed for std::variant and constexpr if)
@@ -169,6 +175,7 @@ target_include_directories(cfg2_tests PRIVATE
 
 target_link_libraries(cfg2_tests PRIVATE
     GTest::gtest_main
+    spdlog::spdlog
 )
 
 set_target_properties(cfg2_tests PROPERTIES

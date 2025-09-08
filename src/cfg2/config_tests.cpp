@@ -598,7 +598,7 @@ TEST_F(ConfigValidationTest, NoneWithEmptyMatchPatternsThrowsException)
 }
 
 // Error handling tests for deserialize<Config>()
-TEST_F(ConfigValidationTest, MissingEncryptionProtocolThrowsException)
+TEST_F(ConfigValidationTest, MissingEncryptionProtocolIsIgnored)
 {
     ConfigNode missingProtocol{
         "config",
@@ -612,8 +612,10 @@ TEST_F(ConfigValidationTest, MissingEncryptionProtocolThrowsException)
          {"encrypt_section", "", {{"match", ".*@test\\.com", {}, NodeType::VALUE}}, NodeType::SECTION}},
         NodeType::ROOT};
 
-    // Unknown static sections (no encryption_protocol) now throw exceptions
-    EXPECT_THROW({ Config config = parse<Config>(missingProtocol); }, std::invalid_argument);
+    // Unknown static sections (no encryption_protocol) are ignored
+    EXPECT_NO_THROW({ Config config = parse<Config>(missingProtocol); });
+    Config config = parse<Config>(missingProtocol);
+    EXPECT_EQ(config.encryptionSections.size(), 0);
 }
 
 TEST_F(ConfigValidationTest, UnregisteredDynamicSectionTypeSkipsSection)
@@ -811,7 +813,7 @@ TEST_F(MandatorySectionTest, RegistryCorrectlyIdentifiesGeneralAsMandatory)
     EXPECT_TRUE(std::find(mandatorySections.begin(), mandatorySections.end(), "general") != mandatorySections.end());
 }
 
-TEST_F(MandatorySectionTest, UnknownStaticSectionThrowsException)
+TEST_F(MandatorySectionTest, UnknownStaticSectionIsIgnored)
 {
     ConfigNode unknownStaticSection{
         "config",
@@ -825,7 +827,9 @@ TEST_F(MandatorySectionTest, UnknownStaticSectionThrowsException)
          {"unknown_section", "", {{"some_field", "some_value", {}, NodeType::VALUE}}, NodeType::SECTION}},
         NodeType::ROOT};
 
-    EXPECT_THROW({ Config config = parse<Config>(unknownStaticSection); }, std::invalid_argument);
+    EXPECT_NO_THROW({ Config config = parse<Config>(unknownStaticSection); });
+    Config config = parse<Config>(unknownStaticSection);
+    EXPECT_EQ(config.encryptionSections.size(), 0);
 }
 
 TEST_F(MandatorySectionTest, InvalidDynamicSectionIsStillIgnored)

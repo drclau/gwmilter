@@ -1,4 +1,5 @@
 #include "config.hpp"
+#include "logger/logger.hpp"
 #include <stdexcept>
 #include <unordered_set>
 
@@ -7,10 +8,16 @@ namespace cfg2 {
 // Implementation of custom deserializer for Config
 template<> Config deserialize<Config>(const ConfigNode &node)
 {
+    if (!node.isRoot())
+        throw std::invalid_argument("Config deserializer requires a root ConfigNode");
+
     Config config{};
     std::unordered_set<std::string> foundSections;
 
     for (const auto &child: node.children) {
+        if (!child.isSection())
+            throw std::invalid_argument("Global keys are not allowed in configuration; found key: '" + child.key + "'");
+
         if (StaticSectionRegistry::hasSection(child.key)) {
             // This is a static section
             foundSections.insert(child.key);
@@ -30,10 +37,15 @@ template<> Config deserialize<Config>(const ConfigNode &node)
                     throw std::runtime_error("Dynamic section type '" + protocolNode->value +
                                              "' does not derive from BaseEncryptionSection");
                 }
+            } else {
+                // Log warning, but allow for forward-compatability
+                spdlog::warn(
+                    "Unknown configuration dynamic section ignored: section = '[{}]', encryption_protocol = '{}'",
+                    child.key, protocolNode->value);
             }
         } else {
-            // This is an unknown static section (no encryption_protocol field)
-            throw std::invalid_argument("Unknown static section '[" + child.key + "]' in configuration");
+            // Log warning, but allow for forward-compatability
+            spdlog::warn("Unknown configuration static section '[{}]' ignored", child.key);
         }
     }
 
