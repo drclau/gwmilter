@@ -105,13 +105,13 @@ public:
     REGISTER_STRUCT(Type, __VA_ARGS__)                                                                                 \
     inline const bool Type##_dynamic_registered = []() {                                                               \
         DynamicSectionRegistry::registerFactory(TypeName,                                                              \
-            [](const ConfigNode &node) -> std::unique_ptr<BaseDynamicSection> {    \
-                auto obj = std::make_unique<Type>(deserialize<Type>(node));        \
-                obj->sectionName = node.key;                                       \
-                obj->type = TypeName;                                              \
-                obj->compileMatches();                                             \
-                return obj;                                                        \
-            });                                                                    \
+                                                [](const ConfigNode &node) -> std::unique_ptr<BaseDynamicSection> {    \
+                                                    auto obj = std::make_unique<Type>(deserialize<Type>(node));        \
+                                                    obj->sectionName = node.key;                                       \
+                                                    obj->type = TypeName;                                              \
+                                                    obj->compileMatches();                                             \
+                                                    return obj;                                                        \
+                                                });                                                                    \
         return true;                                                                                                   \
     }();
 
