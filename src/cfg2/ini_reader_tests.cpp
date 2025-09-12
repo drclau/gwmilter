@@ -410,7 +410,7 @@ ville = Montréal
     EXPECT_EQ(emoji->value, "🔐✅");
 }
 
-TEST_F(IniReaderTest, ParsesNonASCISectionNames)
+TEST_F(IniReaderTest, ParsesNonASCIISectionNames)
 {
     writeTestFile("non_ascii.ini", R"([Ελληνικά]
 language = Greek
@@ -499,11 +499,12 @@ Key = value4
 
     ConfigNode root = parseIniFile(getTestFilePath("case.ini"));
 
-    // SimpleIni is case-insensitive by default, so sections with same name (different case) merge
-    // The last section definition wins, so we should have 1 section with merged keys
+    // SimpleIni is case-insensitive by default, so sections with same name (different case) merge.
+    // The last section definition wins (value-wise). Note: ConfigNode::findChild is case-sensitive.
     EXPECT_EQ(root.children.size(), 1);
 
-    // Find the section (case-insensitive lookup should work)
+    // findChild is case-sensitive; SimpleIni preserves the casing of the first occurrence
+    // (here "Section"), so we look it up using that preserved name.
     const ConfigNode *section = root.findChild("Section");
     ASSERT_NE(section, nullptr);
 
