@@ -1,6 +1,7 @@
 #include "cfg/cfg.hpp"
 #include "logger/logger.hpp"
 #include "milter/milter.hpp"
+#include "signal_manager.hpp"
 #include "utils/string.hpp"
 #include <boost/exception/diagnostic_information.hpp>
 #include <cerrno>
@@ -112,12 +113,14 @@ int main(int argc, char *argv[])
 
         drop_privileges(g->get<string>("user"), g->get<string>("group"));
 
+        // Install signal handling: SIGHUP logs; SIGTERM/SIGINT call smfi_stop()
+        SignalManager signal_manager;
+
         spdlog::info("gwmilter starting");
         gwmilter::milter m(g->get<string>("milter_socket"),
                            SMFIF_ADDHDRS | SMFIF_CHGHDRS | SMFIF_CHGBODY | SMFIF_ADDRCPT | SMFIF_ADDRCPT_PAR |
                                SMFIF_DELRCPT | SMFIF_QUARANTINE | SMFIF_CHGFROM | SMFIF_SETSYMLIST,
                            g->get<int>("milter_timeout"));
-
         m.run();
 
         spdlog::info("gwmilter shutting down");
