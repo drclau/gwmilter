@@ -27,6 +27,7 @@ find_package(Boost 1.52.0 REQUIRED COMPONENTS regex)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(GTest REQUIRED)
+find_package(Threads REQUIRED)
 
 # Fetch SimpleIni using CMake FetchContent
 include(FetchContent)
@@ -127,7 +128,6 @@ add_executable(cfg2_demo
     src/cfg2/config.cpp
     src/cfg2/ini_reader.cpp
     src/cfg2/config_manager.cpp
-    src/cfg2/signal_handler.cpp
 )
 
 target_include_directories(cfg2_demo PRIVATE
@@ -139,6 +139,7 @@ target_include_directories(cfg2_demo PRIVATE
 target_link_libraries(cfg2_demo
     PRIVATE
     spdlog::spdlog
+    Threads::Threads
 )
 
 # Require C++17 for cfg2_demo (needed for std::variant and constexpr if)
