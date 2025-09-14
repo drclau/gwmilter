@@ -8,8 +8,8 @@ FROM alpine:${ALPINE_VERSION} AS builder
 # Install build dependencies
 RUN apk add --no-cache \
     build-base=0.5-r3 \
-    glib-dev=2.84.3-r0 \
-    openssl-dev=3.5.1-r0 \
+    glib-dev=2.84.4-r0 \
+    openssl-dev=3.5.2-r0 \
     boost-dev=1.84.0-r3 \
     curl-dev=8.14.1-r1 \
     fmt-dev=11.2.0-r0 \
@@ -61,7 +61,7 @@ FROM alpine:${ALPINE_VERSION}
 
 # Install runtime dependencies
 RUN apk add --no-cache \
-    glib=2.84.3-r0 \
+    glib=2.84.4-r0 \
     libstdc++=14.2.0-r6 \
     boost1.84=1.84.0-r3 \
     curl=8.14.1-r1 \
