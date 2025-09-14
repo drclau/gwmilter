@@ -58,6 +58,8 @@ find_library(EPDFCRYPT_LIBRARY NAMES epdfcrypt HINTS ${EPDFCRYPT_PATH}/lib)
 # Define the executable and its source files
 add_executable(gwmilter
         src/main.cpp
+        src/signal_manager.hpp
+        src/signal_manager.cpp
         src/cfg/cfg.hpp
         src/cfg/cfg.cpp
         src/handlers/body_handler.hpp
