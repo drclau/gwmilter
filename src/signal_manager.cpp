@@ -6,7 +6,7 @@ namespace gwmilter {
 
 SignalManager::SignalManager()
 {
-    // Block signals in this thread so the dedicated thread can receive them via sigwait()
+    // Block signals in the current thread so the dedicated thread can receive them via sigwait()
     sigset_t set;
     sigemptyset(&set);
     sigaddset(&set, SIGHUP);
@@ -17,7 +17,7 @@ SignalManager::SignalManager()
         throw std::runtime_error("SignalManager: Failed to block signals");
 
     signal_thread_ = std::thread([this, set]() { signalLoop(set); });
-    spdlog::info("Signals installed: SIGHUP logs; SIGTERM/SIGINT stop libmilter");
+    spdlog::info("Signals installed: SIGHUP, SIGINT, SIGTERM");
 }
 
 SignalManager::~SignalManager()
@@ -46,7 +46,7 @@ void SignalManager::signalLoop(sigset_t set)
 
         switch (sig) {
         case SIGHUP:
-            spdlog::info("Received SIGHUP (reload requested)");
+            spdlog::info("Received SIGHUP (reload requested) - not implemented");
             break;
         case SIGTERM:
             spdlog::info("Received SIGTERM (shutdown requested); stopping milter");

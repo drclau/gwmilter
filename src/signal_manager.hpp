@@ -7,7 +7,7 @@
 namespace gwmilter {
 
 // Installs a dedicated sigwait() thread to handle POSIX signals.
-// - SIGHUP: log only for now
+// - SIGHUP: TODO: reload configuration
 // - SIGTERM/SIGINT: call libmilter's smfi_stop() and exit the thread
 class SignalManager {
 public:

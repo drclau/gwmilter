@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
 
         drop_privileges(g->get<string>("user"), g->get<string>("group"));
 
-        // Install signal handling: SIGHUP logs; SIGTERM/SIGINT call smfi_stop()
+        // Install signal handling
         SignalManager signal_manager;
 
         spdlog::info("gwmilter starting");
