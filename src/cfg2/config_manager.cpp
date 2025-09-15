@@ -27,7 +27,8 @@ std::shared_ptr<const Config> ConfigManager::getConfig() const
     return current_config_;
 }
 
-std::string ConfigManager::path() const {
+std::string ConfigManager::path() const
+{
     return config_file_path_;
 }
 

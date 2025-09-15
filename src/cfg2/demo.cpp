@@ -2,16 +2,101 @@
 #include "core.hpp"
 #include <atomic>
 #include <chrono>
-#include <condition_variable>
 #include <csignal>
-#include <pthread.h>
 #include <filesystem>
 #include <iostream>
-#include <mutex>
+#include <pthread.h>
 #include <thread>
 #include <unistd.h>
 
 using namespace cfg2;
+
+// Forward declarations
+void printConfig(const Config &config);
+void runMatchTesting(const Config &config, const std::string &label);
+
+// Signal handler based on SignalManager but simplified for demo
+class DemoSignalHandler {
+public:
+    explicit DemoSignalHandler(ConfigManager &config_mgr);
+    ~DemoSignalHandler();
+
+private:
+    void signalLoop(sigset_t set);
+
+    std::atomic<bool> running_{true};
+    std::thread signal_thread_;
+    sigset_t old_set_{};
+    ConfigManager &config_mgr_;
+};
+
+DemoSignalHandler::DemoSignalHandler(ConfigManager &config_mgr)
+    : config_mgr_(config_mgr)
+{
+    // Block signals in the current thread so the dedicated thread can receive them via sigwait()
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGHUP);
+    sigaddset(&set, SIGTERM);
+    sigaddset(&set, SIGINT);
+
+    if (pthread_sigmask(SIG_BLOCK, &set, &old_set_) != 0)
+        throw std::runtime_error("DemoSignalHandler: Failed to block signals");
+
+    signal_thread_ = std::thread([this, set]() { signalLoop(set); });
+    std::cout << "Signals installed: SIGHUP, SIGINT, SIGTERM\n";
+}
+
+DemoSignalHandler::~DemoSignalHandler()
+{
+    running_ = false;
+    if (signal_thread_.joinable()) {
+        // Wake sigwait() so the thread can exit; no-op when !running_
+        pthread_kill(signal_thread_.native_handle(), SIGINT);
+        signal_thread_.join();
+    }
+    // Restore previous signal mask for this thread
+    pthread_sigmask(SIG_SETMASK, &old_set_, nullptr);
+}
+
+void DemoSignalHandler::signalLoop(sigset_t set)
+{
+    int sig = 0;
+    for (;;) {
+        int rc = sigwait(&set, &sig);
+        if (!running_)
+            break; // ignore events during teardown
+        if (rc != 0) {
+            std::cerr << "DemoSignalHandler: sigwait failed: " << rc << "\n";
+            break;
+        }
+
+        switch (sig) {
+        case SIGHUP:
+            std::cout << "\n*** Received SIGHUP signal (reload requested) ***\n";
+            if (config_mgr_.reload()) {
+                std::cout << "Configuration reloaded successfully\n";
+                // Show updated configuration and match testing
+                auto config = config_mgr_.getConfig();
+                if (config) {
+                    printConfig(*config);
+                    runMatchTesting(*config, "Updated");
+                }
+            } else {
+                std::cout << "Failed to reload configuration\n";
+            }
+            break;
+        case SIGTERM:
+            std::cout << "\n*** Received SIGTERM signal (shutdown requested) ***\n";
+            std::exit(0); // Exit the demo
+        case SIGINT:
+            std::cout << "\n*** Received SIGINT signal (shutdown requested) ***\n";
+            std::exit(0); // Exit the demo
+        default:
+            break;
+        }
+    }
+}
 
 void printConfig(const Config &config)
 {
@@ -25,124 +110,34 @@ void printConfig(const Config &config)
     std::cout << "============================\n\n";
 }
 
-// Modern C++17 signal handling using sigwait()
-class DemoSignalManager {
-public:
-    enum class SignalEvent {
-        None,
-        Reload,    // SIGHUP
-        Shutdown   // SIGTERM/SIGINT
-    };
+void runMatchTesting(const Config &config, const std::string &label)
+{
+    std::vector<std::string> testValues = {"pgp-user@example.com", "user-smime@example.com", "user-pdf@example.com",
+                                           "user@example.com"};
 
-private:
-    std::atomic<bool> running_{true};
-    std::thread signal_thread_;
-    std::mutex event_mutex_;
-    std::condition_variable event_cv_;
-    SignalEvent pending_event_{SignalEvent::None};
-    sigset_t old_set_{}; // previous signal mask to restore
-
-public:
-    explicit DemoSignalManager() {
-        // Block signals for all threads - must be done before creating any threads
-        sigset_t set;
-        sigemptyset(&set);
-        sigaddset(&set, SIGHUP);
-        sigaddset(&set, SIGTERM);
-        sigaddset(&set, SIGINT);
-
-        // Save previous mask so we can restore it later
-        if (pthread_sigmask(SIG_BLOCK, &set, &old_set_) != 0) {
-            throw std::runtime_error("Failed to block signals");
-        }
-
-        // Start signal handling thread
-        signal_thread_ = std::thread([this, set]() {
-            signalLoop(set);
-        });
-    }
-
-    ~DemoSignalManager() {
-        // Ensure the waiting sigwait() unblocks so the thread can exit
-        running_ = false;
-        if (signal_thread_.joinable()) {
-            // Option A: send SIGINT to wake sigwait and trigger a clean exit
-            pthread_kill(signal_thread_.native_handle(), SIGINT);
-            signal_thread_.join();
-        }
-        // Restore the original signal mask for this thread
-        pthread_sigmask(SIG_SETMASK, &old_set_, nullptr);
-    }
-
-    // Wait for a signal event with timeout
-    SignalEvent waitForEvent(std::chrono::milliseconds timeout) {
-        std::unique_lock<std::mutex> lock(event_mutex_);
-
-        if (event_cv_.wait_for(lock, timeout, [this] { return pending_event_ != SignalEvent::None; })) {
-            SignalEvent event = pending_event_;
-            pending_event_ = SignalEvent::None;
-            return event;
-        }
-
-        return SignalEvent::None;
-    }
-
-private:
-    void signalLoop(sigset_t set) {
-        int signal;
-        while (true) {
-            int rc = sigwait(&set, &signal);
-            if (!running_)
-                break;
-            if (rc != 0) {
-                std::cerr << "sigwait failed: " << rc << "\n";
-                break;
-            }
-            switch (signal) {
-            case SIGHUP:
-                std::cout << "\n*** Received SIGHUP signal ***\n";
-                {
-                    std::lock_guard<std::mutex> lock(event_mutex_);
-                    pending_event_ = SignalEvent::Reload;
-                }
-                event_cv_.notify_one();
-                break;
-
-            case SIGTERM:
-                std::cout << "\n*** Received SIGTERM signal ***\n";
-                {
-                    std::lock_guard<std::mutex> lock(event_mutex_);
-                    pending_event_ = SignalEvent::Shutdown;
-                }
-                event_cv_.notify_one();
-                return;  // Exit signal loop - shutdown requested
-
-            case SIGINT:
-                std::cout << "\n*** Received SIGINT signal (Ctrl+C) ***\n";
-                {
-                    std::lock_guard<std::mutex> lock(event_mutex_);
-                    pending_event_ = SignalEvent::Shutdown;
-                }
-                event_cv_.notify_one();
-                return;  // Exit signal loop - shutdown requested
-            }
+    std::cout << label << " Match Testing:\n";
+    for (const auto &testValue: testValues) {
+        auto *matchedSection = config.find_match(testValue);
+        if (matchedSection) {
+            std::cout << "  '" << testValue << "' -> [" << matchedSection->sectionName << "] ("
+                      << matchedSection->encryption_protocol << ")\n";
+        } else {
+            std::cout << "  '" << testValue << "' -> No match\n";
         }
     }
-};
+    std::cout << "\n";
+}
+
 
 int main()
 {
-    // Show current working directory
     std::cout << "Running in directory: " << std::filesystem::current_path() << "\n\n";
 
-    // Create ConfigManager instance
-    const std::string configFile = "src/cfg2/testdata/config.ini";
-
     try {
-        ConfigManager configMgr(configFile);
+        ConfigManager configMgr("src/cfg2/testdata/config.ini");
 
-        // Initialize modern signal handler
-        DemoSignalManager signalMgr;
+        // Initialize signal handler
+        DemoSignalHandler signalMgr(configMgr);
 
         // Get initial configuration
         auto config = configMgr.getConfig();
@@ -156,7 +151,7 @@ int main()
         std::cout << "=== Demo Loop ===\n";
         std::cout << "This demo will run event-driven, waiting for signals.\n";
         std::cout << "To test SIGHUP reload:\n";
-        std::cout << "1. Edit the config file: " << configFile << "\n";
+        std::cout << "1. Edit the config file: " << configMgr.path() << "\n";
         std::cout << "2. Send SIGHUP signal: kill -HUP " << getpid() << "\n";
         std::cout << "3. Watch the configuration reload immediately\n";
         std::cout << "Press Ctrl+C or send SIGTERM to exit gracefully.\n\n";
@@ -166,60 +161,22 @@ int main()
                                                "user@example.com"};
 
         // Show initial match testing
-        std::cout << "Initial Match Testing:\n";
-        for (const auto &testValue: testValues) {
-            auto *matchedSection = config->find_match(testValue);
-            if (matchedSection) {
-                std::cout << "  '" << testValue << "' -> [" << matchedSection->sectionName << "] ("
-                          << matchedSection->encryption_protocol << ")\n";
-            } else {
-                std::cout << "  '" << testValue << "' -> No match\n";
-            }
-        }
+        runMatchTesting(*config, "Initial");
         std::cout << "\nWaiting for signals...\n\n";
 
-        // Event-driven main loop
+        // Simple main loop - signals are handled in background by DemoSignalHandler
+        std::cout << "Demo running... DemoSignalHandler will handle SIGTERM/SIGINT for shutdown.\n";
+        std::cout << "Send SIGHUP to reload configuration: kill -HUP " << getpid() << "\n";
+        std::cout << "Press Ctrl+C or send SIGTERM to exit gracefully.\n\n";
+
+        // Keep the demo running until a signal terminates the process
         while (true) {
-            // Wait for signal events (with 5 second timeout for periodic status)
-            auto event = signalMgr.waitForEvent(std::chrono::seconds(5));
-
-            switch (event) {
-            case DemoSignalManager::SignalEvent::Reload:
-                std::cout << "Processing configuration reload...\n";
-                if (configMgr.reload()) {
-                    config = configMgr.getConfig();
-                    if (config) {
-                        printConfig(*config);
-
-                        // Show updated match testing
-                        std::cout << "Updated Match Testing:\n";
-                        for (const auto &testValue: testValues) {
-                            auto *matchedSection = config->find_match(testValue);
-                            if (matchedSection) {
-                                std::cout << "  '" << testValue << "' -> [" << matchedSection->sectionName << "] ("
-                                          << matchedSection->encryption_protocol << ")\n";
-                            } else {
-                                std::cout << "  '" << testValue << "' -> No match\n";
-                            }
-                        }
-                        std::cout << "\nWaiting for signals...\n\n";
-                    }
-                } else {
-                    std::cerr << "Failed to reload configuration!\n";
-                }
-                break;
-
-            case DemoSignalManager::SignalEvent::Shutdown:
-                std::cout << "Shutting down gracefully...\n";
-                return 0;
-
-            case DemoSignalManager::SignalEvent::None:
-                // Timeout - show periodic status
-                std::cout << "[" << std::chrono::duration_cast<std::chrono::seconds>(
-                    std::chrono::steady_clock::now().time_since_epoch()).count()
-                    << "] Demo still running... (send SIGHUP to reload, Ctrl+C to exit)\n";
-                break;
-            }
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            std::cout << "["
+                      << std::chrono::duration_cast<std::chrono::seconds>(
+                             std::chrono::steady_clock::now().time_since_epoch())
+                             .count()
+                      << "] Demo still running... (Press Ctrl+C to exit)\n";
         }
 
     } catch (const std::exception &e) {
