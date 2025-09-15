@@ -5,7 +5,7 @@
 
 namespace cfg2 {
 
-ConfigManager::ConfigManager(const std::string &config_file)
+ConfigManager::ConfigManager(const std::filesystem::path &config_file)
     : config_file_path_(config_file)
 {
     try {
@@ -14,7 +14,6 @@ ConfigManager::ConfigManager(const std::string &config_file)
         current_config_ = std::make_shared<Config>(deserialize<Config>(root));
 
         std::cout << "ConfigManager: Successfully loaded configuration from " << config_file << std::endl;
-
     } catch (const std::exception &e) {
         std::cerr << "ConfigManager: Failed to initialize with config file '" << config_file << "': " << e.what()
                   << std::endl;
@@ -26,6 +25,10 @@ std::shared_ptr<const Config> ConfigManager::getConfig() const
 {
     std::lock_guard lock(config_mutex_);
     return current_config_;
+}
+
+std::string ConfigManager::path() const {
+    return config_file_path_;
 }
 
 bool ConfigManager::reload()
