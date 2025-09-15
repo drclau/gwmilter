@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <iostream>
 #include <pthread.h>
+#include <spdlog/spdlog.h>
 #include <thread>
 #include <unistd.h>
 
@@ -131,6 +132,9 @@ void runMatchTesting(const Config &config, const std::string &label)
 
 int main()
 {
+    // Initialize spdlog with all log levels enabled
+    spdlog::set_level(spdlog::level::trace);
+
     std::cout << "Running in directory: " << std::filesystem::current_path() << "\n\n";
 
     try {
