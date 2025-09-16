@@ -1,5 +1,6 @@
 #include "config_manager.hpp"
 #include "ini_reader.hpp"
+#include <atomic>
 #include <filesystem>
 #include <spdlog/spdlog.h>
 
@@ -11,7 +12,7 @@ ConfigManager::ConfigManager(const std::filesystem::path &config_file)
     try {
         // Load and parse the configuration
         ConfigNode root = parseIniFile(config_file_path_);
-        current_config_ = std::make_shared<Config>(deserialize<Config>(root));
+        current_config_ = std::make_shared<const Config>(deserialize<Config>(root));
 
         spdlog::info("ConfigManager: Successfully loaded configuration from {}", config_file.string());
     } catch (const std::exception &e) {
@@ -22,8 +23,7 @@ ConfigManager::ConfigManager(const std::filesystem::path &config_file)
 
 std::shared_ptr<const Config> ConfigManager::getConfig() const
 {
-    std::lock_guard lock(config_mutex_);
-    return current_config_;
+    return std::atomic_load_explicit(&current_config_, std::memory_order_acquire);
 }
 
 std::string ConfigManager::path() const
@@ -33,8 +33,6 @@ std::string ConfigManager::path() const
 
 bool ConfigManager::reload()
 {
-    std::lock_guard lock(config_mutex_);
-
     // Check if file exists
     if (!std::filesystem::exists(config_file_path_)) {
         spdlog::error("ConfigManager: Config file not found: {}", config_file_path_.string());
@@ -46,12 +44,12 @@ bool ConfigManager::reload()
 
         // Load and parse the new configuration
         ConfigNode root = parseIniFile(config_file_path_);
-        auto new_config_ptr = std::make_shared<Config>(deserialize<Config>(root));
+        auto new_config_ptr = std::make_shared<const Config>(deserialize<Config>(root));
 
         // Replace the current configuration
         // The old Config object will be automatically destroyed when the last
         // shared_ptr referencing it goes out of scope (safe reference counting)
-        current_config_ = new_config_ptr;
+        std::atomic_store_explicit(&current_config_, new_config_ptr, std::memory_order_release);
 
         spdlog::info("ConfigManager: Configuration successfully reloaded");
         return true;

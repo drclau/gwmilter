@@ -3,14 +3,12 @@
 #include "config.hpp"
 #include <filesystem>
 #include <memory>
-#include <mutex>
 #include <string>
 
 namespace cfg2 {
 
 class ConfigManager {
-    std::shared_ptr<Config> current_config_;
-    mutable std::mutex config_mutex_;
+    std::shared_ptr<const Config> current_config_;
     std::filesystem::path config_file_path_;
 
 public:
