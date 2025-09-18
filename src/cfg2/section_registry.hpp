@@ -2,6 +2,7 @@
 
 #include "config_node.hpp"
 #include "deserializer.hpp"
+#include <fmt/core.h>
 #include <functional>
 #include <memory>
 #include <regex>
@@ -46,7 +47,7 @@ struct BaseDynamicSection : BaseSection {
             try {
                 compiledMatches.emplace_back(pattern, flags);
             } catch (const std::regex_error &e) {
-                throw std::invalid_argument("Invalid regex pattern '" + pattern + "': " + e.what());
+                throw std::invalid_argument(fmt::format("Invalid regex pattern '{}': {}", pattern, e.what()));
             }
         }
     }

@@ -1,5 +1,6 @@
 #include "ini_reader.hpp"
 #include <SimpleIni.h>
+#include <fmt/core.h>
 #include <stdexcept>
 
 namespace cfg2 {
@@ -8,10 +9,8 @@ ConfigNode parseIniFile(const std::string &filename)
 {
     CSimpleIniA ini;
     SI_Error rc = ini.LoadFile(filename.c_str());
-    if (rc != SI_OK) {
-        throw std::runtime_error("Failed to parse INI file '" + filename + "' (error code: " + std::to_string(rc) +
-                                 ")");
-    }
+    if (rc != SI_OK)
+        throw std::runtime_error(fmt::format("Failed to parse INI file '{}' (error code: {})", filename, rc));
 
     ConfigNode root{"config", "", {}, NodeType::ROOT};
 

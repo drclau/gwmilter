@@ -1,5 +1,6 @@
 #include "ini_reader.hpp"
 #include <filesystem>
+#include <fmt/core.h>
 #include <fstream>
 #include <gtest/gtest.h>
 
@@ -528,9 +529,8 @@ TEST_F(IniReaderTest, HandlesExtremelyLongValues)
     std::string long_value(1000, 'v');
     std::string long_section(200, 's');
 
-    std::string ini_content = "[" + long_section + "]\n";
-    ini_content += long_key + " = " + long_value + "\n";
-    ini_content += "normal_key = normal_value\n";
+    std::string ini_content =
+        fmt::format("[{}]\n{} = {}\nnormal_key = normal_value\n", long_section, long_key, long_value);
 
     writeTestFile("long.ini", ini_content);
 

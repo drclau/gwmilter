@@ -1,5 +1,6 @@
 #include "config.hpp"
 #include "logger/logger.hpp"
+#include <fmt/core.h>
 #include <stdexcept>
 #include <unordered_set>
 
@@ -16,7 +17,8 @@ template<> Config deserialize<Config>(const ConfigNode &node)
 
     for (const auto &child: node.children) {
         if (!child.isSection())
-            throw std::invalid_argument("Global keys are not allowed in configuration; found key: '" + child.key + "'");
+            throw std::invalid_argument(
+                fmt::format("Global keys are not allowed in configuration; found key: '{}'", child.key));
 
         if (StaticSectionRegistry::hasSection(child.key)) {
             // This is a static section
@@ -53,7 +55,8 @@ template<> Config deserialize<Config>(const ConfigNode &node)
     auto mandatorySections = StaticSectionRegistry::getMandatorySections();
     for (const auto &mandatorySection: mandatorySections)
         if (foundSections.find(mandatorySection) == foundSections.end())
-            throw std::invalid_argument("Required section '[" + mandatorySection + "]' is missing from configuration");
+            throw std::invalid_argument(
+                fmt::format("Required section '[{}]' is missing from configuration", mandatorySection));
 
     // Perform cross-section validation
     config.validate();

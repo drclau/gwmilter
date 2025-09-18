@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <fmt/core.h>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -29,8 +30,8 @@ struct ConfigNode {
     const ConfigNode *findChild(const std::string &childKey) const
     {
         if (!isContainer()) {
-            throw std::logic_error("Cannot find child '" + childKey + "' in non-container node '" + key +
-                                   "' (type: " + (type == NodeType::VALUE ? "VALUE" : "UNKNOWN") + ")");
+            throw std::logic_error(fmt::format("Cannot find child '{}' in non-container node '{}' (type: {})", childKey,
+                                               key, (type == NodeType::VALUE ? "VALUE" : "UNKNOWN")));
         }
         for (const auto &child: children)
             if (child.key == childKey)
@@ -81,7 +82,7 @@ template<> inline bool fromString<bool>(const std::string &str)
         return true;
     else if (lower == "false" || lower == "0" || lower == "no" || lower == "off")
         return false;
-    throw std::runtime_error("Invalid boolean value: " + str + " (expected: true/false, 1/0, yes/no, on/off)");
+    throw std::runtime_error(fmt::format("Invalid boolean value: {} (expected: true/false, 1/0, yes/no, on/off)", str));
 }
 
 // --------------------------------------------------------------------------------
