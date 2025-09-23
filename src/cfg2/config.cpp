@@ -22,6 +22,9 @@ template<> Config deserialize<Config>(const ConfigNode &node)
 
         if (StaticSectionRegistry::hasSection(child.key)) {
             // This is a static section
+            if (foundSections.find(child.key) != foundSections.end())
+                throw std::invalid_argument(fmt::format("Duplicate static section '[{}]' encountered", child.key));
+
             foundSections.insert(child.key);
             auto section = StaticSectionRegistry::create(child.key, child);
 

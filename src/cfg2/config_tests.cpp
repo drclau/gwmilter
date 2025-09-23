@@ -146,6 +146,18 @@ TEST_F(ConfigTest, ConfigHandlesMultipleEncryptionSections)
     EXPECT_EQ(match->sectionName, "pgp1");
 }
 
+TEST_F(ConfigTest, DuplicateStaticSectionThrows)
+{
+    ConfigNode configNode{
+        "config",
+        "",
+        {{"general", "", {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE}}, NodeType::SECTION},
+         {"general", "", {{"milter_socket", "unix:/tmp/second.sock", {}, NodeType::VALUE}}, NodeType::SECTION}},
+        NodeType::ROOT};
+
+    EXPECT_THROW({ Config config = parse<Config>(configNode); }, std::invalid_argument);
+}
+
 // Enhanced find_match() tests
 TEST_F(ConfigTest, FindMatchReturnsSecondSection)
 {
