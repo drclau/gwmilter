@@ -95,6 +95,44 @@ TEST_F(DynamicSectionTest, RegistryCanCreatePdfSection)
     EXPECT_EQ(pdfSection->type, "pdf");
 }
 
+TEST_F(DynamicSectionTest, RegistryCanCreateSmimeSection)
+{
+    ConfigNode node{"smime_section",
+                    "",
+                    {{"match", ".*@corporate\\.com", {}, NodeType::VALUE},
+                     {"encryption_protocol", "smime", {}, NodeType::VALUE},
+                     {"key_not_found_policy", "discard", {}, NodeType::VALUE}},
+                    NodeType::SECTION};
+
+    auto section = DynamicSectionRegistry::create("smime", node);
+    EXPECT_NE(section, nullptr);
+
+    auto *smimeSection = dynamic_cast<SmimeEncryptionSection *>(section.get());
+    EXPECT_NE(smimeSection, nullptr);
+    EXPECT_EQ(smimeSection->encryption_protocol, "smime");
+    EXPECT_EQ(smimeSection->key_not_found_policy, "discard");
+    EXPECT_EQ(smimeSection->sectionName, "smime_section");
+    EXPECT_EQ(smimeSection->type, "smime");
+}
+
+TEST_F(DynamicSectionTest, RegistryCanCreateNoneSection)
+{
+    ConfigNode node{
+        "none_section",
+        "",
+        {{"match", ".*@public\\.org", {}, NodeType::VALUE}, {"encryption_protocol", "none", {}, NodeType::VALUE}},
+        NodeType::SECTION};
+
+    auto section = DynamicSectionRegistry::create("none", node);
+    EXPECT_NE(section, nullptr);
+
+    auto *noneSection = dynamic_cast<NoneEncryptionSection *>(section.get());
+    EXPECT_NE(noneSection, nullptr);
+    EXPECT_EQ(noneSection->encryption_protocol, "none");
+    EXPECT_EQ(noneSection->sectionName, "none_section");
+    EXPECT_EQ(noneSection->type, "none");
+}
+
 TEST_F(DynamicSectionTest, RegistryThrowsForUnknownType)
 {
     ConfigNode node{"test", "", {}, NodeType::SECTION};
