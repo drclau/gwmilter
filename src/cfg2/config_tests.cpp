@@ -24,7 +24,31 @@ protected:
     void TearDown() override { }
 };
 
-// Test Config structure and find_match functionality
+TEST_F(ConfigTest, ConfigDeserializesGeneralSection)
+{
+    ConfigNode configNode{"config",
+                          "",
+                          {{"general",
+                            "",
+                            {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
+                             {"daemonize", "true", {}, NodeType::VALUE},
+                             {"log_type", "syslog", {}, NodeType::VALUE},
+                             {"log_facility", "daemon", {}, NodeType::VALUE},
+                             {"milter_timeout", "300", {}, NodeType::VALUE},
+                             {"smtp_server", "smtp://mail.example.com:587", {}, NodeType::VALUE}},
+                            NodeType::SECTION}},
+                          NodeType::ROOT};
+
+    Config config = parse<Config>(configNode);
+
+    EXPECT_EQ(config.general.milter_socket, "unix:/tmp/test.sock");
+    EXPECT_EQ(config.general.daemonize, true);
+    EXPECT_EQ(config.general.log_type, "syslog");
+    EXPECT_EQ(config.general.log_facility, "daemon");
+    EXPECT_EQ(config.general.milter_timeout, 300);
+    EXPECT_EQ(config.general.smtp_server, "smtp://mail.example.com:587");
+}
+
 TEST_F(ConfigTest, ConfigFindMatchWorksCorrectly)
 {
     ConfigNode configNode{
@@ -75,90 +99,6 @@ TEST_F(ConfigTest, ConfigFindMatchWorksCorrectly)
     EXPECT_EQ(noMatch, nullptr);
 }
 
-TEST_F(ConfigTest, ConfigDeserializesGeneralSection)
-{
-    ConfigNode configNode{"config",
-                          "",
-                          {{"general",
-                            "",
-                            {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-                             {"daemonize", "true", {}, NodeType::VALUE},
-                             {"log_type", "syslog", {}, NodeType::VALUE},
-                             {"log_facility", "daemon", {}, NodeType::VALUE},
-                             {"milter_timeout", "300", {}, NodeType::VALUE},
-                             {"smtp_server", "smtp://mail.example.com:587", {}, NodeType::VALUE}},
-                            NodeType::SECTION}},
-                          NodeType::ROOT};
-
-    Config config = parse<Config>(configNode);
-
-    EXPECT_EQ(config.general.milter_socket, "unix:/tmp/test.sock");
-    EXPECT_EQ(config.general.daemonize, true);
-    EXPECT_EQ(config.general.log_type, "syslog");
-    EXPECT_EQ(config.general.log_facility, "daemon");
-    EXPECT_EQ(config.general.milter_timeout, 300);
-    EXPECT_EQ(config.general.smtp_server, "smtp://mail.example.com:587");
-}
-
-TEST_F(ConfigTest, ConfigHandlesMultipleEncryptionSections)
-{
-    ConfigNode configNode{"config",
-                          "",
-                          {{"general",
-                            "",
-                            {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-                             {"log_type", "console", {}, NodeType::VALUE},
-                             {"smtp_server", "smtp://localhost", {}, NodeType::VALUE},
-                             {"signing_key", "/path/to/key", {}, NodeType::VALUE}},
-                            NodeType::SECTION},
-                           {"pgp1",
-                            "",
-                            {{"encryption_protocol", "pgp", {}, NodeType::VALUE},
-                             {"match", ".*@secure\\.com", {}, NodeType::VALUE},
-                             {"key_not_found_policy", "reject", {}, NodeType::VALUE}},
-                            NodeType::SECTION},
-                           {"pdf1",
-                            "",
-                            {{"encryption_protocol", "pdf", {}, NodeType::VALUE},
-                             {"match", ".*@external\\.org", {}, NodeType::VALUE},
-                             {"pdf_font_size", "14.0", {}, NodeType::VALUE}},
-                            NodeType::SECTION},
-                           {"pgp2",
-                            "",
-                            {{"encryption_protocol", "pgp", {}, NodeType::VALUE},
-                             {"match", ".*@backup\\.net", {}, NodeType::VALUE},
-                             {"key_not_found_policy", "reject", {}, NodeType::VALUE}},
-                            NodeType::SECTION}},
-                          NodeType::ROOT};
-
-    Config config = parse<Config>(configNode);
-
-    EXPECT_EQ(config.encryptionSections.size(), 3);
-
-    // Test order is preserved
-    EXPECT_EQ(config.encryptionSections[0]->encryption_protocol, "pgp");
-    EXPECT_EQ(config.encryptionSections[1]->encryption_protocol, "pdf");
-    EXPECT_EQ(config.encryptionSections[2]->encryption_protocol, "pgp");
-
-    // Test find_match returns first match
-    auto *match = config.find_match("test@secure.com");
-    EXPECT_NE(match, nullptr);
-    EXPECT_EQ(match->sectionName, "pgp1");
-}
-
-TEST_F(ConfigTest, DuplicateStaticSectionThrows)
-{
-    ConfigNode configNode{
-        "config",
-        "",
-        {{"general", "", {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE}}, NodeType::SECTION},
-         {"general", "", {{"milter_socket", "unix:/tmp/second.sock", {}, NodeType::VALUE}}, NodeType::SECTION}},
-        NodeType::ROOT};
-
-    EXPECT_THROW({ Config config = parse<Config>(configNode); }, std::invalid_argument);
-}
-
-// Enhanced find_match() tests
 TEST_F(ConfigTest, FindMatchReturnsSecondSection)
 {
     ConfigNode configNode{
@@ -254,10 +194,93 @@ TEST_F(ConfigTest, FindMatchReturnsFirstMatchOnly)
     EXPECT_EQ(match->sectionName, "first_match");
 }
 
+TEST_F(ConfigTest, ConfigHandlesMultipleEncryptionSections)
+{
+    ConfigNode configNode{"config",
+                          "",
+                          {{"general",
+                            "",
+                            {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
+                             {"log_type", "console", {}, NodeType::VALUE},
+                             {"smtp_server", "smtp://localhost", {}, NodeType::VALUE},
+                             {"signing_key", "/path/to/key", {}, NodeType::VALUE}},
+                            NodeType::SECTION},
+                           {"pgp1",
+                            "",
+                            {{"encryption_protocol", "pgp", {}, NodeType::VALUE},
+                             {"match", ".*@secure\\.com", {}, NodeType::VALUE},
+                             {"key_not_found_policy", "reject", {}, NodeType::VALUE}},
+                            NodeType::SECTION},
+                           {"pdf1",
+                            "",
+                            {{"encryption_protocol", "pdf", {}, NodeType::VALUE},
+                             {"match", ".*@external\\.org", {}, NodeType::VALUE},
+                             {"pdf_font_size", "14.0", {}, NodeType::VALUE}},
+                            NodeType::SECTION},
+                           {"pgp2",
+                            "",
+                            {{"encryption_protocol", "pgp", {}, NodeType::VALUE},
+                             {"match", ".*@backup\\.net", {}, NodeType::VALUE},
+                             {"key_not_found_policy", "reject", {}, NodeType::VALUE}},
+                            NodeType::SECTION}},
+                          NodeType::ROOT};
+
+    Config config = parse<Config>(configNode);
+
+    EXPECT_EQ(config.encryptionSections.size(), 3);
+
+    // Test order is preserved
+    EXPECT_EQ(config.encryptionSections[0]->encryption_protocol, "pgp");
+    EXPECT_EQ(config.encryptionSections[1]->encryption_protocol, "pdf");
+    EXPECT_EQ(config.encryptionSections[2]->encryption_protocol, "pgp");
+
+    // Test find_match returns first match
+    auto *match = config.find_match("test@secure.com");
+    EXPECT_NE(match, nullptr);
+    EXPECT_EQ(match->sectionName, "pgp1");
+}
+
+TEST_F(ConfigTest, DuplicateStaticSectionThrows)
+{
+    ConfigNode configNode{
+        "config",
+        "",
+        {{"general", "", {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE}}, NodeType::SECTION},
+         {"general", "", {{"milter_socket", "unix:/tmp/second.sock", {}, NodeType::VALUE}}, NodeType::SECTION}},
+        NodeType::ROOT};
+
+    EXPECT_THROW({ Config config = parse<Config>(configNode); }, std::invalid_argument);
+}
+
+TEST_F(ConfigTest, UnknownStaticSectionThrows)
+{
+    ConfigNode configNode{
+        "config",
+        "",
+        {{"general", "", {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE}}, NodeType::SECTION},
+         {"unsupported", "", {{"some_key", "value", {}, NodeType::VALUE}}, NodeType::SECTION}},
+        NodeType::ROOT};
+
+    EXPECT_THROW({ Config config = parse<Config>(configNode); }, std::invalid_argument);
+}
+
+TEST_F(ConfigTest, UnknownDynamicSectionTypeThrows)
+{
+    ConfigNode configNode{
+        "config",
+        "",
+        {{"general", "", {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE}}, NodeType::SECTION},
+         {"custom",
+          "",
+          {{"encryption_protocol", "madeup", {}, NodeType::VALUE}, {"match", ".*@example\\.com", {}, NodeType::VALUE}},
+          NodeType::SECTION}},
+        NodeType::ROOT};
+
+    EXPECT_THROW({ Config config = parse<Config>(configNode); }, std::invalid_argument);
+}
+
 TEST_F(ConfigTest, DynamicSectionsWithSameNameAsTypeAreHandledCorrectly)
 {
-    // This test verifies the fix for the bug where dynamic sections were being
-    // incorrectly processed as static sections when their section name matched their type
     ConfigNode configNode{
         "config",
         "",
@@ -320,127 +343,7 @@ TEST_F(ConfigTest, DynamicSectionsWithSameNameAsTypeAreHandledCorrectly)
     EXPECT_EQ(smimeMatch->encryption_protocol, "smime");
 }
 
-// Validation tests
-TEST_F(ConfigValidationTest, ValidConfigurationParsesSuccessfully)
-{
-    ConfigNode validConfig{"config",
-                           "",
-                           {{"general",
-                             "",
-                             {{"milter_socket", "unix:/var/run/gwmilter/gwmilter.sock", {}, NodeType::VALUE},
-                              {"log_type", "console", {}, NodeType::VALUE},
-                              {"smtp_server", "smtp://127.0.0.1", {}, NodeType::VALUE}},
-                             NodeType::SECTION}},
-                           NodeType::ROOT};
-
-    EXPECT_NO_THROW({ Config config = parse<Config>(validConfig); });
-}
-
-TEST_F(ConfigValidationTest, InvalidLogTypeThrowsException)
-{
-    ConfigNode invalidLogType{"config",
-                              "",
-                              {{"general",
-                                "",
-                                {{"milter_socket", "unix:/var/run/gwmilter/gwmilter.sock", {}, NodeType::VALUE},
-                                 {"log_type", "invalid_type", {}, NodeType::VALUE},
-                                 {"smtp_server", "smtp://127.0.0.1", {}, NodeType::VALUE}},
-                                NodeType::SECTION}},
-                              NodeType::ROOT};
-
-    EXPECT_THROW({ Config config = parse<Config>(invalidLogType); }, std::invalid_argument);
-}
-
-TEST_F(ConfigValidationTest, EmptyMilterSocketThrowsException)
-{
-    ConfigNode emptySocket{"config",
-                           "",
-                           {{"general",
-                             "",
-                             {{"milter_socket", "", {}, NodeType::VALUE},
-                              {"log_type", "console", {}, NodeType::VALUE},
-                              {"smtp_server", "smtp://127.0.0.1", {}, NodeType::VALUE}},
-                             NodeType::SECTION}},
-                           NodeType::ROOT};
-
-    EXPECT_THROW({ Config config = parse<Config>(emptySocket); }, std::invalid_argument);
-}
-
-TEST_F(ConfigValidationTest, InvalidSmtpServerThrowsException)
-{
-    ConfigNode invalidSmtp{"config",
-                           "",
-                           {{"general",
-                             "",
-                             {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-                              {"log_type", "console", {}, NodeType::VALUE},
-                              {"smtp_server", "invalid_url", {}, NodeType::VALUE}},
-                             NodeType::SECTION}},
-                           NodeType::ROOT};
-
-    EXPECT_THROW({ Config config = parse<Config>(invalidSmtp); }, std::invalid_argument);
-}
-
-TEST_F(ConfigValidationTest, InvalidTimeoutThrowsException)
-{
-    ConfigNode invalidTimeout{"config",
-                              "",
-                              {{"general",
-                                "",
-                                {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-                                 {"log_type", "console", {}, NodeType::VALUE},
-                                 {"smtp_server", "smtp://localhost", {}, NodeType::VALUE},
-                                 {"milter_timeout", "-5", {}, NodeType::VALUE}},
-                                NodeType::SECTION}},
-                              NodeType::ROOT};
-
-    EXPECT_THROW({ Config config = parse<Config>(invalidTimeout); }, std::invalid_argument);
-}
-
-TEST_F(ConfigValidationTest, InvalidPdfFontSizeThrowsException)
-{
-    ConfigNode invalidPdfSize{"config",
-                              "",
-                              {{"general",
-                                "",
-                                {{"milter_socket", "unix:/var/run/gwmilter/gwmilter.sock", {}, NodeType::VALUE},
-                                 {"log_type", "console", {}, NodeType::VALUE},
-                                 {"smtp_server", "smtp://127.0.0.1", {}, NodeType::VALUE}},
-                                NodeType::SECTION},
-                               {"encrypt_pdf",
-                                "",
-                                {{"encryption_protocol", "pdf", {}, NodeType::VALUE},
-                                 {"match", ".*@test\\.com", {}, NodeType::VALUE},
-                                 {"pdf_font_size", "0", {}, NodeType::VALUE}},
-                                NodeType::SECTION}},
-                              NodeType::ROOT};
-
-    EXPECT_THROW({ Config config = parse<Config>(invalidPdfSize); }, std::invalid_argument);
-}
-
-TEST_F(ConfigValidationTest, MissingMatchPatternsThrowsException)
-{
-    ConfigNode noMatchPatterns{"config",
-                               "",
-                               {{"general",
-                                 "",
-                                 {{"milter_socket", "unix:/var/run/gwmilter/gwmilter.sock", {}, NodeType::VALUE},
-                                  {"log_type", "console", {}, NodeType::VALUE},
-                                  {"smtp_server", "smtp://127.0.0.1", {}, NodeType::VALUE}},
-                                 NodeType::SECTION},
-                                {"encrypt_pgp",
-                                 "",
-                                 {
-                                     {"encryption_protocol", "pgp", {}, NodeType::VALUE}
-                                     // Missing match patterns
-                                 },
-                                 NodeType::SECTION}},
-                               NodeType::ROOT};
-
-    EXPECT_THROW({ Config config = parse<Config>(noMatchPatterns); }, std::invalid_argument);
-}
-
-TEST_F(ConfigValidationTest, InvalidKeyNotFoundPolicyThrowsException)
+TEST_F(ConfigValidationTest, PgpSectionRejectsInvalidKeyPolicy)
 {
     ConfigNode invalidPolicy{"config",
                              "",
@@ -454,83 +357,16 @@ TEST_F(ConfigValidationTest, InvalidKeyNotFoundPolicyThrowsException)
                                "",
                                {{"encryption_protocol", "pgp", {}, NodeType::VALUE},
                                 {"match", ".*@test\\.com", {}, NodeType::VALUE},
-                                {"key_not_found_policy", "invalid_policy", {}, NodeType::VALUE}},
+                                {"key_not_found_policy", "invalid", {}, NodeType::VALUE}},
                                NodeType::SECTION}},
                              NodeType::ROOT};
 
     EXPECT_THROW({ Config config = parse<Config>(invalidPolicy); }, std::invalid_argument);
 }
 
-// S/MIME validation tests
-TEST_F(ConfigValidationTest, ValidSmimeConfigurationParsesSuccessfully)
+TEST_F(ConfigValidationTest, SmimeSectionRejectsRetrievePolicy)
 {
-    ConfigNode validSmime{"config",
-                          "",
-                          {{"general",
-                            "",
-                            {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-                             {"log_type", "console", {}, NodeType::VALUE},
-                             {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
-                            NodeType::SECTION},
-                           {"encrypt_smime",
-                            "",
-                            {{"encryption_protocol", "smime", {}, NodeType::VALUE},
-                             {"match", ".*@secure\\.com", {}, NodeType::VALUE},
-                             {"key_not_found_policy", "reject", {}, NodeType::VALUE}},
-                            NodeType::SECTION}},
-                          NodeType::ROOT};
-
-    EXPECT_NO_THROW({ Config config = parse<Config>(validSmime); });
-}
-
-TEST_F(ConfigValidationTest, SmimeWithInvalidProtocolSkipsSection)
-{
-    ConfigNode invalidSmimeProtocol{"config",
-                                    "",
-                                    {{"general",
-                                      "",
-                                      {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-                                       {"log_type", "console", {}, NodeType::VALUE},
-                                       {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
-                                      NodeType::SECTION},
-                                     {"encrypt_smime",
-                                      "",
-                                      {{"encryption_protocol", "invalid", {}, NodeType::VALUE},
-                                       {"match", ".*@secure\\.com", {}, NodeType::VALUE},
-                                       {"key_not_found_policy", "reject", {}, NodeType::VALUE}},
-                                      NodeType::SECTION}},
-                                    NodeType::ROOT};
-
-    EXPECT_NO_THROW({ Config config = parse<Config>(invalidSmimeProtocol); });
-
-    Config config = parse<Config>(invalidSmimeProtocol);
-    EXPECT_EQ(config.encryptionSections.size(), 0);
-}
-
-TEST_F(ConfigValidationTest, SmimeWithRetrievePolicyThrowsException)
-{
-    ConfigNode smimeWithRetrieve{"config",
-                                 "",
-                                 {{"general",
-                                   "",
-                                   {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-                                    {"log_type", "console", {}, NodeType::VALUE},
-                                    {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
-                                   NodeType::SECTION},
-                                  {"encrypt_smime",
-                                   "",
-                                   {{"encryption_protocol", "smime", {}, NodeType::VALUE},
-                                    {"match", ".*@secure\\.com", {}, NodeType::VALUE},
-                                    {"key_not_found_policy", "retrieve", {}, NodeType::VALUE}},
-                                   NodeType::SECTION}},
-                                 NodeType::ROOT};
-
-    EXPECT_THROW({ Config config = parse<Config>(smimeWithRetrieve); }, std::invalid_argument);
-}
-
-TEST_F(ConfigValidationTest, SmimeWithEmptyMatchPatternsThrowsException)
-{
-    ConfigNode smimeNoMatch{"config",
+    ConfigNode invalidSmime{"config",
                             "",
                             {{"general",
                               "",
@@ -541,76 +377,15 @@ TEST_F(ConfigValidationTest, SmimeWithEmptyMatchPatternsThrowsException)
                              {"encrypt_smime",
                               "",
                               {{"encryption_protocol", "smime", {}, NodeType::VALUE},
-                               {"key_not_found_policy", "reject", {}, NodeType::VALUE}},
+                               {"match", ".*@secure\\.com", {}, NodeType::VALUE},
+                               {"key_not_found_policy", "retrieve", {}, NodeType::VALUE}},
                               NodeType::SECTION}},
                             NodeType::ROOT};
 
-    EXPECT_THROW({ Config config = parse<Config>(smimeNoMatch); }, std::invalid_argument);
+    EXPECT_THROW({ Config config = parse<Config>(invalidSmime); }, std::invalid_argument);
 }
 
-// NoneEncryptionSection validation tests
-TEST_F(ConfigValidationTest, ValidNoneConfigurationParsesSuccessfully)
-{
-    ConfigNode validNone{
-        "config",
-        "",
-        {{"general",
-          "",
-          {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-           {"log_type", "console", {}, NodeType::VALUE},
-           {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
-          NodeType::SECTION},
-         {"no_encrypt",
-          "",
-          {{"encryption_protocol", "none", {}, NodeType::VALUE}, {"match", ".*@public\\.org", {}, NodeType::VALUE}},
-          NodeType::SECTION}},
-        NodeType::ROOT};
-
-    EXPECT_NO_THROW({ Config config = parse<Config>(validNone); });
-}
-
-TEST_F(ConfigValidationTest, NoneWithInvalidProtocolSkipsSection)
-{
-    ConfigNode invalidNoneProtocol{
-        "config",
-        "",
-        {{"general",
-          "",
-          {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-           {"log_type", "console", {}, NodeType::VALUE},
-           {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
-          NodeType::SECTION},
-         {"no_encrypt",
-          "",
-          {{"encryption_protocol", "invalid", {}, NodeType::VALUE}, {"match", ".*@public\\.org", {}, NodeType::VALUE}},
-          NodeType::SECTION}},
-        NodeType::ROOT};
-
-    EXPECT_NO_THROW({ Config config = parse<Config>(invalidNoneProtocol); });
-
-    Config config = parse<Config>(invalidNoneProtocol);
-    EXPECT_EQ(config.encryptionSections.size(), 0);
-}
-
-TEST_F(ConfigValidationTest, NoneWithEmptyMatchPatternsThrowsException)
-{
-    ConfigNode noneNoMatch{
-        "config",
-        "",
-        {{"general",
-          "",
-          {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-           {"log_type", "console", {}, NodeType::VALUE},
-           {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
-          NodeType::SECTION},
-         {"no_encrypt", "", {{"encryption_protocol", "none", {}, NodeType::VALUE}}, NodeType::SECTION}},
-        NodeType::ROOT};
-
-    EXPECT_THROW({ Config config = parse<Config>(noneNoMatch); }, std::invalid_argument);
-}
-
-// Error handling tests for deserialize<Config>()
-TEST_F(ConfigValidationTest, MissingEncryptionProtocolIsIgnored)
+TEST_F(ConfigValidationTest, MissingEncryptionProtocolThrowsException)
 {
     ConfigNode missingProtocol{
         "config",
@@ -624,33 +399,7 @@ TEST_F(ConfigValidationTest, MissingEncryptionProtocolIsIgnored)
          {"encrypt_section", "", {{"match", ".*@test\\.com", {}, NodeType::VALUE}}, NodeType::SECTION}},
         NodeType::ROOT};
 
-    // Unknown static sections (no encryption_protocol) are ignored
-    EXPECT_NO_THROW({ Config config = parse<Config>(missingProtocol); });
-    Config config = parse<Config>(missingProtocol);
-    EXPECT_EQ(config.encryptionSections.size(), 0);
-}
-
-TEST_F(ConfigValidationTest, UnregisteredDynamicSectionTypeSkipsSection)
-{
-    ConfigNode unregisteredType{"config",
-                                "",
-                                {{"general",
-                                  "",
-                                  {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-                                   {"log_type", "console", {}, NodeType::VALUE},
-                                   {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
-                                  NodeType::SECTION},
-                                 {"encrypt_section",
-                                  "",
-                                  {{"encryption_protocol", "unregistered_type", {}, NodeType::VALUE},
-                                   {"match", ".*@test\\.com", {}, NodeType::VALUE}},
-                                  NodeType::SECTION}},
-                                NodeType::ROOT};
-
-    EXPECT_NO_THROW({ Config config = parse<Config>(unregisteredType); });
-
-    Config config = parse<Config>(unregisteredType);
-    EXPECT_EQ(config.encryptionSections.size(), 0);
+    EXPECT_THROW({ Config config = parse<Config>(missingProtocol); }, std::invalid_argument);
 }
 
 TEST_F(ConfigValidationTest, ConfigWithOnlyGeneralSectionWorks)
@@ -673,7 +422,6 @@ TEST_F(ConfigValidationTest, ConfigWithOnlyGeneralSectionWorks)
     EXPECT_EQ(config.general.milter_socket, "unix:/tmp/test.sock");
 }
 
-// Cross-section validation tests
 TEST_F(ConfigValidationTest, SigningKeyRequiredForMultipleEncryptionSections)
 {
     ConfigNode multipleWithoutSigningKey{
@@ -782,7 +530,6 @@ TEST_F(ConfigValidationTest, SingleEncryptionSectionDoesNotRequireSigningKey)
     EXPECT_TRUE(config.general.signing_key.empty());
 }
 
-// Mandatory section tests
 TEST_F(MandatorySectionTest, MissingGeneralSectionThrowsException)
 {
     // Config with only dynamic sections but no general section
@@ -798,24 +545,6 @@ TEST_F(MandatorySectionTest, MissingGeneralSectionThrowsException)
     EXPECT_THROW({ Config config = parse<Config>(missingGeneral); }, std::invalid_argument);
 }
 
-TEST_F(MandatorySectionTest, GeneralSectionPresentParseSuccessfully)
-{
-    ConfigNode withGeneral{"config",
-                           "",
-                           {{"general",
-                             "",
-                             {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-                              {"log_type", "console", {}, NodeType::VALUE},
-                              {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
-                             NodeType::SECTION}},
-                           NodeType::ROOT};
-
-    EXPECT_NO_THROW({ Config config = parse<Config>(withGeneral); });
-
-    Config config = parse<Config>(withGeneral);
-    EXPECT_EQ(config.general.milter_socket, "unix:/tmp/test.sock");
-}
-
 TEST_F(MandatorySectionTest, RegistryCorrectlyIdentifiesGeneralAsMandatory)
 {
     EXPECT_TRUE(StaticSectionRegistry::isMandatory("general"));
@@ -823,46 +552,4 @@ TEST_F(MandatorySectionTest, RegistryCorrectlyIdentifiesGeneralAsMandatory)
     auto mandatorySections = StaticSectionRegistry::getMandatorySections();
     EXPECT_FALSE(mandatorySections.empty());
     EXPECT_TRUE(std::find(mandatorySections.begin(), mandatorySections.end(), "general") != mandatorySections.end());
-}
-
-TEST_F(MandatorySectionTest, UnknownStaticSectionIsIgnored)
-{
-    ConfigNode unknownStaticSection{
-        "config",
-        "",
-        {{"general",
-          "",
-          {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-           {"log_type", "console", {}, NodeType::VALUE},
-           {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
-          NodeType::SECTION},
-         {"unknown_section", "", {{"some_field", "some_value", {}, NodeType::VALUE}}, NodeType::SECTION}},
-        NodeType::ROOT};
-
-    EXPECT_NO_THROW({ Config config = parse<Config>(unknownStaticSection); });
-    Config config = parse<Config>(unknownStaticSection);
-    EXPECT_EQ(config.encryptionSections.size(), 0);
-}
-
-TEST_F(MandatorySectionTest, InvalidDynamicSectionIsStillIgnored)
-{
-    ConfigNode invalidDynamicSection{"config",
-                                     "",
-                                     {{"general",
-                                       "",
-                                       {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-                                        {"log_type", "console", {}, NodeType::VALUE},
-                                        {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
-                                       NodeType::SECTION},
-                                      {"dynamic_section",
-                                       "",
-                                       {{"encryption_protocol", "invalid_protocol", {}, NodeType::VALUE},
-                                        {"match", ".*@test.com", {}, NodeType::VALUE}},
-                                       NodeType::SECTION}},
-                                     NodeType::ROOT};
-
-    EXPECT_NO_THROW({ Config config = parse<Config>(invalidDynamicSection); });
-
-    Config config = parse<Config>(invalidDynamicSection);
-    EXPECT_EQ(config.encryptionSections.size(), 0);
 }

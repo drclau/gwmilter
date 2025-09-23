@@ -63,6 +63,13 @@ REGISTER_STATIC_SECTION_MANDATORY(GeneralSection, "general", field("milter_socke
 // Encryption section types
 struct BaseEncryptionSection : BaseDynamicSection {
     std::string encryption_protocol;
+
+    void validate() const
+    {
+        const auto &section = sectionName.empty() ? type : sectionName;
+        if (match.empty())
+            throw std::invalid_argument(fmt::format("Section '{}' must have at least one match pattern", section));
+    }
 };
 
 struct PgpEncryptionSection : BaseEncryptionSection {
@@ -70,13 +77,12 @@ struct PgpEncryptionSection : BaseEncryptionSection {
 
     void validate() const
     {
+        BaseEncryptionSection::validate();
+
         const auto &section = sectionName.empty() ? type : sectionName;
 
         if (encryption_protocol != "pgp")
             throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='pgp'", section));
-
-        if (match.empty())
-            throw std::invalid_argument(fmt::format("Section '{}' must have at least one match pattern", section));
 
         if (key_not_found_policy.empty())
             throw std::invalid_argument(fmt::format("Section '{}' must define key_not_found_policy", section));
@@ -96,13 +102,12 @@ struct SmimeEncryptionSection : BaseEncryptionSection {
 
     void validate() const
     {
+        BaseEncryptionSection::validate();
+
         const auto &section = sectionName.empty() ? type : sectionName;
 
         if (encryption_protocol != "smime")
             throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='smime'", section));
-
-        if (match.empty())
-            throw std::invalid_argument(fmt::format("Section '{}' must have at least one match pattern", section));
 
         if (key_not_found_policy.empty())
             throw std::invalid_argument(fmt::format("Section '{}' must define key_not_found_policy", section));
@@ -129,13 +134,12 @@ struct PdfEncryptionSection : BaseEncryptionSection {
 
     void validate() const
     {
+        BaseEncryptionSection::validate();
+
         const auto &section = sectionName.empty() ? type : sectionName;
 
         if (encryption_protocol != "pdf")
             throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='pdf'", section));
-
-        if (match.empty())
-            throw std::invalid_argument(fmt::format("Section '{}' must have at least one match pattern", section));
 
         if (pdf_font_size <= 0.0f)
             throw std::invalid_argument(
@@ -163,13 +167,12 @@ REGISTER_DYNAMIC_SECTION_INLINE(PdfEncryptionSection, "pdf", field("match", &Pdf
 struct NoneEncryptionSection : BaseEncryptionSection {
     void validate() const
     {
+        BaseEncryptionSection::validate();
+
         const auto &section = sectionName.empty() ? type : sectionName;
 
         if (encryption_protocol != "none")
             throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='none'", section));
-
-        if (match.empty())
-            throw std::invalid_argument(fmt::format("Section '{}' must have at least one match pattern", section));
     }
 };
 

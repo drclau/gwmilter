@@ -43,14 +43,11 @@ template<> Config deserialize<Config>(const ConfigNode &node)
                                              "' does not derive from BaseEncryptionSection");
                 }
             } else {
-                // Log warning, but allow for forward-compatability
-                spdlog::warn(
-                    "Unknown configuration dynamic section ignored: section = '[{}]', encryption_protocol = '{}'",
-                    child.key, protocolNode->value);
+                throw std::invalid_argument(
+                    fmt::format("Unknown dynamic section type '{}' in section '[{}]'", protocolNode->value, child.key));
             }
         } else {
-            // Log warning, but allow for forward-compatability
-            spdlog::warn("Unknown configuration static section '[{}]' ignored", child.key);
+            throw std::invalid_argument(fmt::format("Unknown static section '[{}]'", child.key));
         }
     }
 
