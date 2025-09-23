@@ -9,7 +9,8 @@
 
 namespace cfg2 {
 
-// Forward-declare deserialize (for nested structs)
+// Forward declarations
+struct BaseSection;
 template<typename T> T deserialize(const ConfigNode &);
 
 // --------------------------------------------------------------------------------
@@ -108,6 +109,12 @@ public:
     {
         T obj{};
         deserializeFields(obj, node, std::make_index_sequence<sizeof...(Fields)>{});
+
+        // Set sectionName for error reporting if the object inherits from BaseSection
+        if constexpr (std::is_base_of_v<BaseSection, T>) {
+            if (obj.sectionName.empty())
+                obj.sectionName = node.key;
+        }
 
         // All config sections must have validate() method
         obj.validate();

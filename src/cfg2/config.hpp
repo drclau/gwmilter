@@ -66,9 +66,8 @@ struct BaseEncryptionSection : BaseDynamicSection {
 
     void validate() const
     {
-        const auto &section = sectionName.empty() ? type : sectionName;
         if (match.empty())
-            throw std::invalid_argument(fmt::format("Section '{}' must have at least one match pattern", section));
+            throw std::invalid_argument(fmt::format("Section '{}' must have at least one match pattern", sectionName));
     }
 };
 
@@ -79,17 +78,15 @@ struct PgpEncryptionSection : BaseEncryptionSection {
     {
         BaseEncryptionSection::validate();
 
-        const auto &section = sectionName.empty() ? type : sectionName;
-
         if (encryption_protocol != "pgp")
-            throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='pgp'", section));
+            throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='pgp'", sectionName));
 
         if (key_not_found_policy.empty())
-            throw std::invalid_argument(fmt::format("Section '{}' must define key_not_found_policy", section));
+            throw std::invalid_argument(fmt::format("Section '{}' must define key_not_found_policy", sectionName));
 
         if (key_not_found_policy != "discard" && key_not_found_policy != "reject" && key_not_found_policy != "retrieve")
             throw std::invalid_argument(fmt::format(
-                "Section '{}' must set key_not_found_policy to 'discard', 'reject', or 'retrieve'", section));
+                "Section '{}' must set key_not_found_policy to 'discard', 'reject', or 'retrieve'", sectionName));
     }
 };
 
@@ -104,18 +101,16 @@ struct SmimeEncryptionSection : BaseEncryptionSection {
     {
         BaseEncryptionSection::validate();
 
-        const auto &section = sectionName.empty() ? type : sectionName;
-
         if (encryption_protocol != "smime")
-            throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='smime'", section));
+            throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='smime'", sectionName));
 
         if (key_not_found_policy.empty())
-            throw std::invalid_argument(fmt::format("Section '{}' must define key_not_found_policy", section));
+            throw std::invalid_argument(fmt::format("Section '{}' must define key_not_found_policy", sectionName));
 
         if (key_not_found_policy != "discard" && key_not_found_policy != "reject")
             throw std::invalid_argument(fmt::format("Section '{}' must set key_not_found_policy to 'discard' or "
                                                     "'reject' (retrieve is not supported for S/MIME)",
-                                                    section));
+                                                    sectionName));
     }
 };
 
@@ -136,21 +131,19 @@ struct PdfEncryptionSection : BaseEncryptionSection {
     {
         BaseEncryptionSection::validate();
 
-        const auto &section = sectionName.empty() ? type : sectionName;
-
         if (encryption_protocol != "pdf")
-            throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='pdf'", section));
+            throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='pdf'", sectionName));
 
         if (pdf_font_size <= 0.0f)
             throw std::invalid_argument(
-                fmt::format("Section '{}' must set pdf_font_size to a positive value", section));
+                fmt::format("Section '{}' must set pdf_font_size to a positive value", sectionName));
 
         if (pdf_margin < 0.0f)
             throw std::invalid_argument(
-                fmt::format("Section '{}' must set pdf_margin to a non-negative value", section));
+                fmt::format("Section '{}' must set pdf_margin to a non-negative value", sectionName));
 
         if (pdf_attachment.empty())
-            throw std::invalid_argument(fmt::format("Section '{}' must define pdf_attachment", section));
+            throw std::invalid_argument(fmt::format("Section '{}' must define pdf_attachment", sectionName));
     }
 };
 
@@ -169,10 +162,8 @@ struct NoneEncryptionSection : BaseEncryptionSection {
     {
         BaseEncryptionSection::validate();
 
-        const auto &section = sectionName.empty() ? type : sectionName;
-
         if (encryption_protocol != "none")
-            throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='none'", section));
+            throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='none'", sectionName));
     }
 };
 

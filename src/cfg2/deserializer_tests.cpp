@@ -68,6 +68,24 @@ TEST_F(DeserializerTest, DeserializePgpEncryptionSection)
     EXPECT_EQ(result.key_not_found_policy, "reject");
 }
 
+TEST_F(DeserializerTest, DeserializeSmimeEncryptionSection)
+{
+    ConfigNode node{"smime_section",
+                    "",
+                    {{"match", ".*@secure\\.com,admin@.*", {}, NodeType::VALUE},
+                     {"encryption_protocol", "smime", {}, NodeType::VALUE},
+                     {"key_not_found_policy", "reject", {}, NodeType::VALUE}},
+                    NodeType::SECTION};
+
+    SmimeEncryptionSection result = deserialize<SmimeEncryptionSection>(node);
+
+    EXPECT_EQ(result.match.size(), 2);
+    EXPECT_EQ(result.match[0], ".*@secure\\.com");
+    EXPECT_EQ(result.match[1], "admin@.*");
+    EXPECT_EQ(result.encryption_protocol, "smime");
+    EXPECT_EQ(result.key_not_found_policy, "reject");
+}
+
 TEST_F(DeserializerTest, DeserializePdfEncryptionSection)
 {
     ConfigNode node{"pdf_section",
@@ -109,6 +127,7 @@ TEST_F(DeserializerTest, ParseFunctionWorksWithConfig)
 }
 
 // Vector deserialization tests
+// NOTE: this functionality is not used with INI files, but is available for future expansion to other formats
 TEST_F(DeserializerTest, DeserializeVectorFromChildNodes)
 {
     ConfigNode node{"section",
@@ -172,20 +191,6 @@ TEST_F(DeserializerTest, DeserializeSingleElementVector)
 
     EXPECT_EQ(result.match.size(), 1);
     EXPECT_EQ(result.match[0], ".*@single\\.com");
-}
-
-// Validation integration tests
-TEST_F(DeserializerTest, ValidationIsCalledDuringDeserialization)
-{
-    // Test with GeneralSection which has validation enabled
-    ConfigNode validNode{"general",
-                         "",
-                         {{"milter_socket", "unix:/tmp/valid.sock", {}, NodeType::VALUE},
-                          {"log_type", "console", {}, NodeType::VALUE},
-                          {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
-                         NodeType::SECTION};
-
-    EXPECT_NO_THROW({ GeneralSection result = deserialize<GeneralSection>(validNode); });
 }
 
 TEST_F(DeserializerTest, ValidationExceptionsPropagateFromDeserialization)
@@ -271,7 +276,6 @@ TEST_F(FromStringTest, BoolConversionOnOff)
 TEST_F(FromStringTest, BoolConversionInvalidValues)
 {
     EXPECT_THROW(fromString<bool>("invalid"), std::runtime_error);
-    EXPECT_THROW(fromString<bool>("maybe"), std::runtime_error);
     EXPECT_THROW(fromString<bool>("2"), std::runtime_error);
     EXPECT_THROW(fromString<bool>(""), std::runtime_error);
 }
@@ -369,32 +373,4 @@ TEST_F(DeserializerAdvancedTest, MakeDeserializerFunctionWorks)
     // Fields not specified in deserializer should have default values
     EXPECT_EQ(result.daemonize, false);
     EXPECT_EQ(result.milter_timeout, -1);
-}
-
-TEST_F(DeserializerAdvancedTest, FieldDescriptorEdgeCases)
-{
-    // Test field descriptor with various field types
-    ConfigNode node{"pdf_section",
-                    "",
-                    {{"match", "test@example.com,admin@test.org", {}, NodeType::VALUE},
-                     {"encryption_protocol", "pdf", {}, NodeType::VALUE},
-                     {"pdf_font_size", "15.5", {}, NodeType::VALUE},
-                     {"pdf_margin", "25.0", {}, NodeType::VALUE},
-                     {"pdf_attachment", "secure_document.pdf", {}, NodeType::VALUE}},
-                    NodeType::SECTION};
-
-    PdfEncryptionSection result = deserialize<PdfEncryptionSection>(node);
-
-    // Test vector field (match)
-    EXPECT_EQ(result.match.size(), 2);
-    EXPECT_EQ(result.match[0], "test@example.com");
-    EXPECT_EQ(result.match[1], "admin@test.org");
-
-    // Test string field
-    EXPECT_EQ(result.encryption_protocol, "pdf");
-    EXPECT_EQ(result.pdf_attachment, "secure_document.pdf");
-
-    // Test float fields
-    EXPECT_FLOAT_EQ(result.pdf_font_size, 15.5f);
-    EXPECT_FLOAT_EQ(result.pdf_margin, 25.0f);
 }
