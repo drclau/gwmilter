@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <fmt/core.h>
 #include <fstream>
+#include <functional>
 #include <gtest/gtest.h>
 
 using namespace cfg2;
@@ -178,7 +179,8 @@ key3 = value3
 
     const ConfigNode *key1 = section1->findChild("key1");
     ASSERT_NE(key1, nullptr);
-    EXPECT_EQ(key1->value, "value1  ; inline comment"); // SimpleIni includes inline comments
+    // SimpleIni treats inline comments as part of the value
+    EXPECT_EQ(key1->value, "value1  ; inline comment");
 
     const ConfigNode *section2 = root.findChild("section2");
     ASSERT_NE(section2, nullptr);
@@ -358,103 +360,6 @@ match = .*@fourth\.com
     EXPECT_EQ(root.children[4].findChild("encryption_protocol")->value, "smime");
 }
 
-// Unicode/Encoding Tests
-TEST_F(IniReaderTest, ParsesUTF8Characters)
-{
-    writeTestFile("utf8.ini", R"([配置]
-用户名 = José
-密码 = pάssword123
-路径 = /home/müller/config.txt
-
-[français]
-nom = François
-ville = Montréal
-émoji = 🔐✅
-)");
-
-    ConfigNode root = parseIniFile(getTestFilePath("utf8.ini"));
-
-    EXPECT_EQ(root.children.size(), 2);
-
-    // Test Chinese section with mixed language values
-    const ConfigNode *config = root.findChild("配置");
-    ASSERT_NE(config, nullptr);
-    EXPECT_EQ(config->children.size(), 3);
-
-    const ConfigNode *username = config->findChild("用户名");
-    ASSERT_NE(username, nullptr);
-    EXPECT_EQ(username->value, "José");
-
-    const ConfigNode *password = config->findChild("密码");
-    ASSERT_NE(password, nullptr);
-    EXPECT_EQ(password->value, "pάssword123");
-
-    const ConfigNode *path = config->findChild("路径");
-    ASSERT_NE(path, nullptr);
-    EXPECT_EQ(path->value, "/home/müller/config.txt");
-
-    // Test French section with accented characters and emojis
-    const ConfigNode *french = root.findChild("français");
-    ASSERT_NE(french, nullptr);
-    EXPECT_EQ(french->children.size(), 3);
-
-    const ConfigNode *nom = french->findChild("nom");
-    ASSERT_NE(nom, nullptr);
-    EXPECT_EQ(nom->value, "François");
-
-    const ConfigNode *ville = french->findChild("ville");
-    ASSERT_NE(ville, nullptr);
-    EXPECT_EQ(ville->value, "Montréal");
-
-    const ConfigNode *emoji = french->findChild("émoji");
-    ASSERT_NE(emoji, nullptr);
-    EXPECT_EQ(emoji->value, "🔐✅");
-}
-
-TEST_F(IniReaderTest, ParsesNonASCIISectionNames)
-{
-    writeTestFile("non_ascii.ini", R"([Ελληνικά]
-language = Greek
-alphabet = αβγδε
-
-[русский]
-language = Russian  
-alphabet = абвгд
-
-[العربية]
-language = Arabic
-direction = rtl
-)");
-
-    ConfigNode root = parseIniFile(getTestFilePath("non_ascii.ini"));
-
-    EXPECT_EQ(root.children.size(), 3);
-
-    // Test Greek section
-    const ConfigNode *greek = root.findChild("Ελληνικά");
-    ASSERT_NE(greek, nullptr);
-    const ConfigNode *greek_lang = greek->findChild("language");
-    ASSERT_NE(greek_lang, nullptr);
-    EXPECT_EQ(greek_lang->value, "Greek");
-    const ConfigNode *greek_alpha = greek->findChild("alphabet");
-    ASSERT_NE(greek_alpha, nullptr);
-    EXPECT_EQ(greek_alpha->value, "αβγδε");
-
-    // Test Russian section
-    const ConfigNode *russian = root.findChild("русский");
-    ASSERT_NE(russian, nullptr);
-    const ConfigNode *russian_lang = russian->findChild("language");
-    ASSERT_NE(russian_lang, nullptr);
-    EXPECT_EQ(russian_lang->value, "Russian");
-
-    // Test Arabic section
-    const ConfigNode *arabic = root.findChild("العربية");
-    ASSERT_NE(arabic, nullptr);
-    const ConfigNode *arabic_dir = arabic->findChild("direction");
-    ASSERT_NE(arabic_dir, nullptr);
-    EXPECT_EQ(arabic_dir->value, "rtl");
-}
-
 // Edge Case Tests
 TEST_F(IniReaderTest, HandlesDuplicateKeys)
 {
@@ -598,3 +503,93 @@ second = 2
     EXPECT_EQ(section2->children[2].value, "4");
     EXPECT_EQ(section2->children[3].value, "2");
 }
+
+// Unicode/Encoding Tests
+struct KeyValueExpectation {
+    std::string key;
+    std::string value;
+};
+
+struct SectionExpectation {
+    std::string name;
+    std::vector<KeyValueExpectation> entries;
+};
+
+struct UnicodeIniCase {
+    std::string name;
+    std::string filename;
+    std::string content;
+    std::vector<SectionExpectation> expectedSections;
+};
+
+namespace {
+void expectConfigMatches(const ConfigNode &root, const std::vector<SectionExpectation> &expectedSections)
+{
+    ASSERT_EQ(root.children.size(), expectedSections.size());
+
+    for (const auto &sectionExpectation: expectedSections) {
+        SCOPED_TRACE("Section: " + sectionExpectation.name);
+
+        const auto *section = root.findChild(sectionExpectation.name);
+        ASSERT_NE(section, nullptr);
+        EXPECT_EQ(section->children.size(), sectionExpectation.entries.size());
+
+        for (const auto &entry: sectionExpectation.entries) {
+            const auto *node = section->findChild(entry.key);
+            ASSERT_NE(node, nullptr);
+            EXPECT_EQ(node->value, entry.value);
+        }
+    }
+}
+} // namespace
+
+class IniReaderUnicodeTest : public IniReaderTest, public ::testing::WithParamInterface<UnicodeIniCase> { };
+
+TEST_P(IniReaderUnicodeTest, ParsesUnicodeContent)
+{
+    const auto &[name, filename, content, expectedSections] = GetParam();
+    SCOPED_TRACE("Unicode case: " + name);
+    writeTestFile(filename, content);
+
+    const ConfigNode root = parseIniFile(getTestFilePath(filename));
+
+    expectConfigMatches(root, expectedSections);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    UnicodeCases, IniReaderUnicodeTest,
+    ::testing::Values(
+        UnicodeIniCase{
+            "Utf8Characters",
+            "utf8.ini",
+            R"([配置]
+用户名 = José
+密码 = pάssword123
+路径 = /home/müller/config.txt
+
+[français]
+nom = François
+ville = Montréal
+émoji = 🔐✅
+)",
+            {SectionExpectation{"配置",
+                                {{"用户名", "José"}, {"密码", "pάssword123"}, {"路径", "/home/müller/config.txt"}}},
+             SectionExpectation{"français", {{"nom", "François"}, {"ville", "Montréal"}, {"émoji", "🔐✅"}}}}},
+        UnicodeIniCase{"NonAsciiSectionNames",
+                       "non_ascii.ini",
+                       R"([Ελληνικά]
+language = Greek
+alphabet = αβγδε
+
+[русский]
+language = Russian
+alphabet = абвгд
+
+[العربية]
+language = Arabic
+direction = rtl
+)",
+                       {SectionExpectation{"Ελληνικά", {{"language", "Greek"}, {"alphabet", "αβγδε"}}},
+                        SectionExpectation{"русский", {{"language", "Russian"}, {"alphabet", "абвгд"}}},
+                        SectionExpectation{"العربية", {{"language", "Arabic"}, {"direction", "rtl"}}}}}),
+    [](const ::testing::TestParamInfo<IniReaderUnicodeTest::ParamType> &info) { return info.param.name; });
