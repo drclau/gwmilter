@@ -4,7 +4,7 @@ FROM alpine:${ALPINE_VERSION}
 
 # Install runtime dependencies for key generation
 RUN apk add --no-cache \
-    gnupg=2.4.7-r0
+    'gnupg~2.4'
 
 # Create gwmilter user for consistent user management across services
 RUN adduser -D -H -s /sbin/nologin gwmilter && \
