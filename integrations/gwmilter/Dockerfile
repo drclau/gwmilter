@@ -7,25 +7,25 @@ FROM alpine:${ALPINE_VERSION} AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
-    build-base=0.5-r3 \
-    glib-dev=2.84.4-r0 \
-    openssl-dev=3.5.2-r0 \
-    boost-dev=1.84.0-r3 \
-    curl-dev=8.14.1-r1 \
-    fmt-dev=11.2.0-r0 \
-    gmime-dev=3.2.15-r0 \
-    gpgme-dev=1.24.2-r1 \
-    libharu-dev=2.4.4-r0 \
-    libmilter-dev=1.0.2-r10 \
-    spdlog-dev=1.15.3-r0 \
-    pkgconf=2.4.3-r0 \
-    autoconf=2.72-r1 \
-    autoconf-archive=2024.10.16-r0 \
-    automake=1.17-r1 \
-    libtool=2.5.4-r1 \
-    make=4.4.1-r3 \
-    cmake=3.31.7-r1 \
-    git=2.49.1-r0
+    'build-base~0.5' \
+    'glib-dev~2.84' \
+    'openssl-dev~3.5' \
+    'boost-dev~1.84' \
+    'curl-dev~8.14' \
+    'fmt-dev~11.2' \
+    'gmime-dev~3.2' \
+    'gpgme-dev~1.24' \
+    'libharu-dev~2.4' \
+    'libmilter-dev~1.0' \
+    'spdlog-dev~1.15' \
+    pkgconf \
+    autoconf \
+    autoconf-archive \
+    automake \
+    libtool \
+    make \
+    cmake \
+    git
 
 # Build and install libegpgcrypt
 RUN git clone --depth 1 https://github.com/rzvncj/libegpgcrypt.git /deps/libegpgcrypt && \
@@ -61,18 +61,18 @@ FROM alpine:${ALPINE_VERSION}
 
 # Install runtime dependencies
 RUN apk add --no-cache \
-    glib=2.84.4-r0 \
-    libstdc++=14.2.0-r6 \
-    boost1.84=1.84.0-r3 \
-    curl=8.14.1-r1 \
-    fmt=11.2.0-r0 \
-    gmime=3.2.15-r0 \
-    gpgme=1.24.2-r1 \
-    libharu=2.4.4-r0 \
-    libmilter=1.0.2-r10 \
-    spdlog=1.15.3-r0 \
-    gnupg=2.4.7-r0 \
-    gettext=0.24.1-r0
+    'glib~2.84' \
+    'libstdc++~14.2' \
+    'boost1.84~1.84' \
+    'curl~8.14' \
+    'fmt~11.2' \
+    'gmime~3.2' \
+    'gpgme~1.24' \
+    'libharu~2.4' \
+    'libmilter~1.0' \
+    'spdlog~1.15' \
+    'gnupg~2.4' \
+    'gettext~0.24'
 
 # Create gwmilter user and set up GnuPG directory
 RUN adduser -D -H -s /sbin/nologin gwmilter && \
