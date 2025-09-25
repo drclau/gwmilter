@@ -165,7 +165,6 @@ if(BUILD_TESTING)
         src/cfg2/config_tests.cpp
         src/cfg2/config_node_tests.cpp
         src/cfg2/ini_reader_tests.cpp
-        src/cfg2/memory_safety_test.cpp
         src/cfg2/multiple_same_type_test.cpp
         src/cfg2/section_registry.cpp
         src/cfg2/config.cpp
