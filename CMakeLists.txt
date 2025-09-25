@@ -26,7 +26,6 @@ find_package(CURL REQUIRED)
 find_package(Boost 1.52.0 REQUIRED COMPONENTS regex)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
-find_package(Threads REQUIRED)
 
 # Use pkg-config to find and configure GLib and GMime
 pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET glib-2.0)
@@ -125,6 +124,7 @@ if(BUILD_TESTING)
 endif()
 
 if(ENABLE_CFG2)
+    find_package(Threads REQUIRED)
     include(FetchContent)
     FetchContent_Declare(
         simpleini
