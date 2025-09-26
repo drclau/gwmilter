@@ -2,6 +2,7 @@
 
 #include "config_node.hpp"
 #include "deserializer.hpp"
+#include <exception>
 #include <fmt/core.h>
 #include <functional>
 #include <memory>
@@ -26,7 +27,7 @@ struct BaseDynamicSection : BaseSection {
     std::vector<std::regex> compiledMatches; // Compiled regex patterns
 
     // Check if any of the compiled regex patterns match the given value
-    bool matches(const std::string &value) const
+    [[nodiscard]] bool matches(const std::string &value) const
     {
         for (const auto &regex: compiledMatches)
             if (std::regex_search(value, regex))
@@ -64,18 +65,18 @@ class StaticSectionRegistry {
 public:
     static void registerFactory(const std::string &sectionName, const StaticSectionFactory &factory,
                                 bool mandatory = false);
-    static std::unique_ptr<BaseSection> create(const std::string &sectionName, const ConfigNode &node);
-    static bool hasSection(const std::string &sectionName);
-    static bool isMandatory(const std::string &sectionName);
-    static std::vector<std::string> getMandatorySections();
+    [[nodiscard]] static std::unique_ptr<BaseSection> create(const std::string &sectionName, const ConfigNode &node);
+    [[nodiscard]] static bool hasSection(const std::string &sectionName);
+    [[nodiscard]] static bool isMandatory(const std::string &sectionName);
+    [[nodiscard]] static std::vector<std::string> getMandatorySections();
 };
 
 // Registry for dynamic sections only
 class DynamicSectionRegistry {
 public:
     static void registerFactory(const std::string &type, const DynamicSectionFactory &factory);
-    static std::unique_ptr<BaseDynamicSection> create(const std::string &type, const ConfigNode &node);
-    static bool hasType(const std::string &type);
+    [[nodiscard]] static std::unique_ptr<BaseDynamicSection> create(const std::string &type, const ConfigNode &node);
+    [[nodiscard]] static bool hasType(const std::string &type);
 };
 
 // Shared implementation for static section registration; header-safe via inline variable

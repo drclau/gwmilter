@@ -15,13 +15,13 @@ public:
     explicit ConfigManager(const std::filesystem::path &config_file);
 
     // Get current configuration (thread-safe)
-    std::shared_ptr<const Config> getConfig() const;
+    [[nodiscard]] std::shared_ptr<const Config> getConfig() const;
 
     // Expose config file path (as string)
-    std::string path() const;
+    [[nodiscard]] std::string path() const;
 
     // Reload configuration from file
-    bool reload();
+    [[nodiscard]] bool reload();
 
     ~ConfigManager() = default;
 

@@ -9,7 +9,7 @@
 namespace cfg2 {
 
 // Static "general" section
-struct GeneralSection : BaseSection {
+struct GeneralSection final : BaseSection {
     std::string milter_socket;
     bool daemonize = false;
     std::string user;
@@ -71,7 +71,7 @@ struct BaseEncryptionSection : BaseDynamicSection {
     }
 };
 
-struct PgpEncryptionSection : BaseEncryptionSection {
+struct PgpEncryptionSection final : BaseEncryptionSection {
     std::string key_not_found_policy;
 
     void validate() const
@@ -94,7 +94,7 @@ REGISTER_DYNAMIC_SECTION_INLINE(PgpEncryptionSection, "pgp", field("match", &Pgp
                                 field("encryption_protocol", &PgpEncryptionSection::encryption_protocol),
                                 field("key_not_found_policy", &PgpEncryptionSection::key_not_found_policy))
 
-struct SmimeEncryptionSection : BaseEncryptionSection {
+struct SmimeEncryptionSection final : BaseEncryptionSection {
     std::string key_not_found_policy;
 
     void validate() const
@@ -118,7 +118,7 @@ REGISTER_DYNAMIC_SECTION_INLINE(SmimeEncryptionSection, "smime", field("match", 
                                 field("encryption_protocol", &SmimeEncryptionSection::encryption_protocol),
                                 field("key_not_found_policy", &SmimeEncryptionSection::key_not_found_policy))
 
-struct PdfEncryptionSection : BaseEncryptionSection {
+struct PdfEncryptionSection final : BaseEncryptionSection {
     std::string email_body_replacement;
     std::string pdf_main_page_if_missing;
     std::string pdf_attachment = "email.pdf";
@@ -157,7 +157,7 @@ REGISTER_DYNAMIC_SECTION_INLINE(PdfEncryptionSection, "pdf", field("match", &Pdf
                                 field("pdf_font_size", &PdfEncryptionSection::pdf_font_size),
                                 field("pdf_margin", &PdfEncryptionSection::pdf_margin))
 
-struct NoneEncryptionSection : BaseEncryptionSection {
+struct NoneEncryptionSection final : BaseEncryptionSection {
     void validate() const
     {
         BaseEncryptionSection::validate();
@@ -177,7 +177,7 @@ struct Config {
 
     // Find first encryption section that matches the given recipient
     // Returns raw pointer safe as observer - lifetime tied to parent Config shared_ptr
-    const BaseEncryptionSection *find_match(const std::string &rcpt) const
+    [[nodiscard]] const BaseEncryptionSection *find_match(const std::string &rcpt) const
     {
         for (const auto &section: encryptionSections)
             if (section->matches(rcpt))

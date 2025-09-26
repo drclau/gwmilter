@@ -445,7 +445,7 @@ TEST_F(ConfigValidationTest, SigningKeyRequiredForMultipleEncryptionSections)
           NodeType::SECTION}},
         NodeType::ROOT};
 
-    EXPECT_THROW(parse<Config>(multipleWithoutSigningKey), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(parse<Config>(multipleWithoutSigningKey)), std::invalid_argument);
 }
 
 TEST_F(ConfigValidationTest, SmtpServerRequiredForMultipleEncryptionSections)
@@ -470,7 +470,7 @@ TEST_F(ConfigValidationTest, SmtpServerRequiredForMultipleEncryptionSections)
           NodeType::SECTION}},
         NodeType::ROOT};
 
-    EXPECT_THROW(parse<Config>(multipleWithoutSmtp), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(parse<Config>(multipleWithoutSmtp)), std::invalid_argument);
 }
 
 TEST_F(ConfigValidationTest, CrossSectionValidationPassesWithBothFields)

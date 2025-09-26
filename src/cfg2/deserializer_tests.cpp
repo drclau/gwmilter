@@ -275,9 +275,9 @@ TEST_F(FromStringTest, BoolConversionOnOff)
 
 TEST_F(FromStringTest, BoolConversionInvalidValues)
 {
-    EXPECT_THROW(fromString<bool>("invalid"), std::runtime_error);
-    EXPECT_THROW(fromString<bool>("2"), std::runtime_error);
-    EXPECT_THROW(fromString<bool>(""), std::runtime_error);
+    EXPECT_THROW(static_cast<void>(fromString<bool>("invalid")), std::runtime_error);
+    EXPECT_THROW(static_cast<void>(fromString<bool>("2")), std::runtime_error);
+    EXPECT_THROW(static_cast<void>(fromString<bool>("")), std::runtime_error);
 }
 
 TEST_F(FromStringTest, NumericConversions)
@@ -290,10 +290,10 @@ TEST_F(FromStringTest, NumericConversions)
 
 TEST_F(FromStringTest, NumericConversionFailures)
 {
-    EXPECT_THROW(fromString<int>("not_a_number"), std::runtime_error);
-    EXPECT_THROW(fromString<int>("abc123"), std::runtime_error); // Text before number
-    EXPECT_THROW(fromString<float>("invalid_float"), std::runtime_error);
-    EXPECT_THROW(fromString<double>("not.a.double"), std::runtime_error);
+    EXPECT_THROW(static_cast<void>(fromString<int>("not_a_number")), std::runtime_error);
+    EXPECT_THROW(static_cast<void>(fromString<int>("abc123")), std::runtime_error); // Text before number
+    EXPECT_THROW(static_cast<void>(fromString<float>("invalid_float")), std::runtime_error);
+    EXPECT_THROW(static_cast<void>(fromString<double>("not.a.double")), std::runtime_error);
 }
 
 TEST_F(FromStringTest, StringConversion)
@@ -341,7 +341,7 @@ TEST_F(DeserializerErrorTest, MalformedConfigNodeHandling)
     // Test findChild() error for non-container nodes
     ConfigNode leafNode{"value", "some_value", {}, NodeType::VALUE};
 
-    EXPECT_THROW(leafNode.findChild("nonexistent"), std::logic_error);
+    EXPECT_THROW(static_cast<void>(leafNode.findChild("nonexistent")), std::logic_error);
 }
 
 class DeserializerAdvancedTest : public ::testing::Test {

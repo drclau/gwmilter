@@ -113,5 +113,5 @@ TEST_F(ConfigNodeTest, FindChildThrowsOnValueNode)
 {
     ConfigNode valueNode{"leaf", "leaf_value", {}, NodeType::VALUE};
 
-    EXPECT_THROW(valueNode.findChild("anything"), std::logic_error);
+    EXPECT_THROW(static_cast<void>(valueNode.findChild("anything")), std::logic_error);
 }

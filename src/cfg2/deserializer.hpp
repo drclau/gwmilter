@@ -126,7 +126,8 @@ public:
 // --------------------------------------------------------------------------------
 // Helper function to create deserializer instances with field descriptors
 
-template<typename T, typename... FieldTs> auto make_deserializer(FieldTs... fields) -> Deserializer<T, FieldTs...>
+template<typename T, typename... FieldTs>
+[[nodiscard]] auto make_deserializer(FieldTs... fields) -> Deserializer<T, FieldTs...>
 {
     return Deserializer<T, FieldTs...>(fields...);
 }
@@ -145,7 +146,7 @@ template<typename T, typename... FieldTs> auto make_deserializer(FieldTs... fiel
 // --------------------------------------------------------------------------------
 // Helper to kick off parsing
 
-template<typename T> T parse(const ConfigNode &node)
+template<typename T> [[nodiscard]] T parse(const ConfigNode &node)
 {
     static_assert(is_deserializable_struct<T>::value, "Type not deserializable");
     return deserialize<T>(node);

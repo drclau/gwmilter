@@ -27,7 +27,7 @@ struct ConfigNode {
     NodeType type = NodeType::VALUE; // Default for leaf nodes
 
     // Helper to find child by key
-    const ConfigNode *findChild(const std::string &childKey) const
+    [[nodiscard]] const ConfigNode *findChild(const std::string &childKey) const
     {
         if (!isContainer()) {
             throw std::logic_error(fmt::format("Cannot find child '{}' in non-container node '{}' (type: {})", childKey,
@@ -40,10 +40,13 @@ struct ConfigNode {
     }
 
     // Type checking helper methods
-    bool isRoot() const { return type == NodeType::ROOT; }
-    bool isSection() const { return type == NodeType::SECTION; }
-    bool isValue() const { return type == NodeType::VALUE; }
-    bool isContainer() const { return type == NodeType::ROOT || type == NodeType::SECTION; }
+    [[nodiscard]] constexpr bool isRoot() const noexcept { return type == NodeType::ROOT; }
+    [[nodiscard]] constexpr bool isSection() const noexcept { return type == NodeType::SECTION; }
+    [[nodiscard]] constexpr bool isValue() const noexcept { return type == NodeType::VALUE; }
+    [[nodiscard]] constexpr bool isContainer() const noexcept
+    {
+        return type == NodeType::ROOT || type == NodeType::SECTION;
+    }
 };
 
 // --------------------------------------------------------------------------------
@@ -52,7 +55,7 @@ struct ConfigNode {
 // Convert strings to basic types
 // For numeric-like types, enforce strict parsing: only allow optional surrounding whitespace
 // and reject any trailing non-whitespace characters (e.g., "42abc" is invalid)
-template<typename T> T fromString(const std::string &str)
+template<typename T> [[nodiscard]] T fromString(const std::string &str)
 {
     std::istringstream iss(str);
     if constexpr (std::is_same_v<T, std::string>) {
@@ -73,7 +76,7 @@ template<typename T> T fromString(const std::string &str)
 }
 
 // Specialized bool conversion for user-friendly values
-template<> inline bool fromString<bool>(const std::string &str)
+template<> [[nodiscard]] inline bool fromString<bool>(const std::string &str)
 {
     std::string lower = str;
     std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });

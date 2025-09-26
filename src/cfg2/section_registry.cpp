@@ -35,9 +35,9 @@ void StaticSectionRegistry::registerFactory(const std::string &sectionName, cons
                                             bool mandatory)
 {
     auto &f = staticFactories();
-    if (f.find(sectionName) != f.end())
+    auto [_, inserted] = f.emplace(sectionName, factory);
+    if (!inserted)
         throw std::runtime_error("Duplicate static section factory registration: " + sectionName);
-    f.emplace(sectionName, factory);
     if (mandatory)
         mandatorySections().insert(sectionName);
 }
@@ -73,9 +73,9 @@ std::vector<std::string> StaticSectionRegistry::getMandatorySections()
 void DynamicSectionRegistry::registerFactory(const std::string &type, const DynamicSectionFactory &factory)
 {
     auto &f = dynamicFactories();
-    if (f.find(type) != f.end())
+    auto [_, inserted] = f.emplace(type, factory);
+    if (!inserted)
         throw std::runtime_error("Duplicate dynamic section factory registration: " + type);
-    f.emplace(type, factory);
 }
 
 std::unique_ptr<BaseDynamicSection> DynamicSectionRegistry::create(const std::string &type, const ConfigNode &node)

@@ -1,10 +1,10 @@
 #pragma once
 
 #include "config_node.hpp"
-#include <string>
+#include <filesystem>
 
 namespace cfg2 {
 
-ConfigNode parseIniFile(const std::string &filename);
+[[nodiscard]] ConfigNode parseIniFile(const std::filesystem::path &filename);
 
 } // namespace cfg2

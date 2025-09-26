@@ -5,12 +5,14 @@
 
 namespace cfg2 {
 
-ConfigNode parseIniFile(const std::string &filename)
+ConfigNode parseIniFile(const std::filesystem::path &filename)
 {
     CSimpleIniA ini;
-    SI_Error rc = ini.LoadFile(filename.c_str());
+    const auto filenameStr = filename.u8string();
+    SI_Error rc = ini.LoadFile(filenameStr.c_str());
     if (rc != SI_OK)
-        throw std::runtime_error(fmt::format("Failed to parse INI file '{}' (error code: {})", filename, rc));
+        throw std::runtime_error(
+            fmt::format("Failed to parse INI file '{}' (error code: {})", filename.generic_string(), rc));
 
     ConfigNode root{"config", "", {}, NodeType::ROOT};
 

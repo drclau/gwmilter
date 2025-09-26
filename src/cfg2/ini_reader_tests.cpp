@@ -189,7 +189,7 @@ key3 = value3
 
 TEST_F(IniReaderTest, ThrowsOnMissingFile)
 {
-    EXPECT_THROW(parseIniFile("/nonexistent/file.ini"), std::runtime_error);
+    EXPECT_THROW(static_cast<void>(parseIniFile(std::filesystem::path{"/nonexistent/file.ini"})), std::runtime_error);
 }
 
 TEST_F(IniReaderTest, HandlesMalformedFileGracefully)
@@ -315,7 +315,7 @@ key = value
     EXPECT_TRUE(key->isValue());
 
     // Test type validation error - trying to find child in VALUE node should throw
-    EXPECT_THROW(key->findChild("nonexistent"), std::logic_error);
+    EXPECT_THROW(static_cast<void>(key->findChild("nonexistent")), std::logic_error);
 }
 
 TEST_F(IniReaderTest, PreservesSectionOrder)
