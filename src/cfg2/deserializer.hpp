@@ -124,7 +124,7 @@ public:
 };
 
 // --------------------------------------------------------------------------------
-// Helper to turn __VA_ARGS__ into a real template pack
+// Helper function to create deserializer instances with field descriptors
 
 template<typename T, typename... FieldTs> auto make_deserializer(FieldTs... fields) -> Deserializer<T, FieldTs...>
 {
