@@ -54,7 +54,7 @@ COPY LICENSE README.md CMakeLists.txt /app/
 COPY src/ /app/src/
 
 # Build gwmilter
-RUN cmake -B build -S . && cmake --build build -- -j$(nproc)
+RUN cmake -DBUILD_TESTING=off -B build -S . && cmake --build build --target gwmilter -- -j$(nproc)
 
 # Stage 2: Create the runtime image
 FROM alpine:${ALPINE_VERSION}

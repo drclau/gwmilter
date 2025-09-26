@@ -111,3 +111,91 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_L
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
     target_link_libraries(gwmilter PRIVATE c++fs)
 endif()
+
+# Toggle cfg2 module and utilities (demo/tests) on demand; default OFF while migrating
+option(ENABLE_CFG2 "Build cfg2 module and utilities (demo/tests)" OFF)
+
+# Default test toggle: OFF unless explicitly enabled by user or CI
+option(BUILD_TESTING "Enable building tests via CTest/GTest" OFF)
+
+include(CTest)
+if(BUILD_TESTING)
+    enable_testing()
+endif()
+
+if(ENABLE_CFG2)
+    find_package(Threads REQUIRED)
+    include(FetchContent)
+    FetchContent_Declare(
+        simpleini
+        GIT_REPOSITORY https://github.com/brofield/simpleini.git
+        GIT_TAG v4.22
+    )
+    FetchContent_MakeAvailable(simpleini)
+
+    # Add cfg2 demo executable with new modular structure
+    add_executable(cfg2_demo
+        src/cfg2/demo.cpp
+        src/cfg2/section_registry.cpp
+        src/cfg2/config.cpp
+        src/cfg2/ini_reader.cpp
+        src/cfg2/config_manager.cpp
+    )
+
+    target_include_directories(cfg2_demo PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${Boost_INCLUDE_DIRS}
+        ${simpleini_SOURCE_DIR}
+    )
+
+    target_link_libraries(cfg2_demo
+        PRIVATE
+        spdlog::spdlog
+        Threads::Threads
+    )
+
+    set_target_properties(cfg2_demo PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+    )
+
+    if(BUILD_TESTING)
+        find_package(GTest REQUIRED)
+        include(GoogleTest)
+
+        # Add cfg2 tests executable with Google Test
+        add_executable(cfg2_tests
+            src/cfg2/deserializer_tests.cpp
+            src/cfg2/dynamic_section_tests.cpp
+            src/cfg2/config_tests.cpp
+            src/cfg2/config_node_tests.cpp
+            src/cfg2/ini_reader_tests.cpp
+            src/cfg2/multiple_same_type_test.cpp
+            src/cfg2/section_registry.cpp
+            src/cfg2/config.cpp
+            src/cfg2/ini_reader.cpp
+            src/cfg2/config_manager.cpp
+        )
+
+        target_include_directories(cfg2_tests PRIVATE
+            ${PROJECT_SOURCE_DIR}/src
+            ${simpleini_SOURCE_DIR}
+        )
+
+        target_link_libraries(cfg2_tests PRIVATE
+            GTest::gtest_main
+            spdlog::spdlog
+        )
+
+        set_target_properties(cfg2_tests PROPERTIES
+            CXX_STANDARD 17
+            CXX_STANDARD_REQUIRED ON
+        )
+
+        # Register GoogleTest-based tests individually with CTest
+        gtest_discover_tests(cfg2_tests
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            DISCOVERY_TIMEOUT 60
+        )
+    endif()
+endif()
