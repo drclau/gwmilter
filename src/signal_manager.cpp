@@ -1,10 +1,13 @@
 #include "signal_manager.hpp"
+#include "logger/logger.hpp"
+#include "logger/spdlog_init.hpp"
+#include <cassert>
 #include <libmilter/mfapi.h>
-#include <spdlog/spdlog.h>
 
 namespace gwmilter {
 
-SignalManager::SignalManager()
+SignalManager::SignalManager(cfg2::ConfigManager &config_mgr)
+    : config_mgr_(config_mgr)
 {
     // Block signals in the current thread so the dedicated thread can receive them via sigwait()
     sigset_t set;
@@ -46,7 +49,21 @@ void SignalManager::signalLoop(sigset_t set)
 
         switch (sig) {
         case SIGHUP:
-            spdlog::info("Received SIGHUP (reload requested) - not implemented");
+            spdlog::info("Received SIGHUP (reload requested)");
+            if (config_mgr_.reload()) {
+                // Reinitialize logging with new configuration
+                auto new_config = config_mgr_.getConfig();
+                assert(new_config != nullptr);
+                try {
+                    logging::init_spdlog(new_config->general);
+                    spdlog::info("Configuration and logging reloaded successfully");
+                } catch (const std::exception &e) {
+                    spdlog::error("Failed to reinitialize logging after config reload: {}", e.what());
+                    spdlog::warn("Configuration reloaded but logging settings unchanged");
+                }
+            } else {
+                spdlog::warn("Configuration reload failed; keeping current configuration");
+            }
             break;
         case SIGTERM:
             spdlog::info("Received SIGTERM (shutdown requested); stopping milter");

@@ -15,6 +15,20 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <syslog.h>
+
+// Logger enum values (previously from logger/logger.hpp, now inlined for legacy cfg system)
+namespace {
+constexpr int LOG_TYPE_CONSOLE = 0;
+constexpr int LOG_TYPE_SYSLOG = 1;
+
+constexpr int LOG_PRIORITY_TRACE = static_cast<int>(spdlog::level::trace);
+constexpr int LOG_PRIORITY_DEBUG = static_cast<int>(spdlog::level::debug);
+constexpr int LOG_PRIORITY_INFO = static_cast<int>(spdlog::level::info);
+constexpr int LOG_PRIORITY_WARN = static_cast<int>(spdlog::level::warn);
+constexpr int LOG_PRIORITY_ERR = static_cast<int>(spdlog::level::err);
+constexpr int LOG_PRIORITY_CRITICAL = static_cast<int>(spdlog::level::critical);
+} // anonymous namespace
 
 namespace gwmilter::cfg {
 
@@ -90,36 +104,25 @@ general_section_handler::general_section_handler(const std::string &name, boost:
     option_handlers_["group"] = [this](auto &&arg) { process_group(std::forward<decltype(arg)>(arg)); };
     option_handlers_["log_type"] = [this](auto &&arg) { process_log_type(std::forward<decltype(arg)>(arg)); };
     log_type_map_ = {
-        {"console", lexical_cast<string>(logger::console)},
-        {"syslog", lexical_cast<string>(logger::syslog)},
+        {"console", lexical_cast<string>(LOG_TYPE_CONSOLE)},
+        {"syslog", lexical_cast<string>(LOG_TYPE_SYSLOG)},
     };
     option_handlers_["log_facility"] = [this](auto &&arg) { process_log_facility(std::forward<decltype(arg)>(arg)); };
     log_facility_map_ = {
-        {"user", lexical_cast<string>(logger::facility_user)},
-        {"mail", lexical_cast<string>(logger::facility_mail)},
-        {"news", lexical_cast<string>(logger::facility_news)},
-        {"uucp", lexical_cast<string>(logger::facility_uucp)},
-        {"daemon", lexical_cast<string>(logger::facility_daemon)},
-        {"auth", lexical_cast<string>(logger::facility_auth)},
-        {"cron", lexical_cast<string>(logger::facility_cron)},
-        {"lpr", lexical_cast<string>(logger::facility_lpr)},
-        {"local0", lexical_cast<string>(logger::facility_local0)},
-        {"local1", lexical_cast<string>(logger::facility_local1)},
-        {"local2", lexical_cast<string>(logger::facility_local2)},
-        {"local3", lexical_cast<string>(logger::facility_local3)},
-        {"local4", lexical_cast<string>(logger::facility_local4)},
-        {"local5", lexical_cast<string>(logger::facility_local5)},
-        {"local6", lexical_cast<string>(logger::facility_local6)},
-        {"local7", lexical_cast<string>(logger::facility_local7)},
+        {"user", lexical_cast<string>(LOG_USER)},     {"mail", lexical_cast<string>(LOG_MAIL)},
+        {"news", lexical_cast<string>(LOG_NEWS)},     {"uucp", lexical_cast<string>(LOG_UUCP)},
+        {"daemon", lexical_cast<string>(LOG_DAEMON)}, {"auth", lexical_cast<string>(LOG_AUTH)},
+        {"cron", lexical_cast<string>(LOG_CRON)},     {"lpr", lexical_cast<string>(LOG_LPR)},
+        {"local0", lexical_cast<string>(LOG_LOCAL0)}, {"local1", lexical_cast<string>(LOG_LOCAL1)},
+        {"local2", lexical_cast<string>(LOG_LOCAL2)}, {"local3", lexical_cast<string>(LOG_LOCAL3)},
+        {"local4", lexical_cast<string>(LOG_LOCAL4)}, {"local5", lexical_cast<string>(LOG_LOCAL5)},
+        {"local6", lexical_cast<string>(LOG_LOCAL6)}, {"local7", lexical_cast<string>(LOG_LOCAL7)},
     };
     option_handlers_["log_priority"] = [this](auto &&arg) { process_log_priority(std::forward<decltype(arg)>(arg)); };
     log_priority_map_ = {
-        {"trace", lexical_cast<string>(logger::priority_trace)},
-        {"debug", lexical_cast<string>(logger::priority_debug)},
-        {"info", lexical_cast<string>(logger::priority_info)},
-        {"warning", lexical_cast<string>(logger::priority_warn)},
-        {"error", lexical_cast<string>(logger::priority_err)},
-        {"critical", lexical_cast<string>(logger::priority_critical)},
+        {"trace", lexical_cast<string>(LOG_PRIORITY_TRACE)}, {"debug", lexical_cast<string>(LOG_PRIORITY_DEBUG)},
+        {"info", lexical_cast<string>(LOG_PRIORITY_INFO)},   {"warning", lexical_cast<string>(LOG_PRIORITY_WARN)},
+        {"error", lexical_cast<string>(LOG_PRIORITY_ERR)},   {"critical", lexical_cast<string>(LOG_PRIORITY_CRITICAL)},
     };
     option_handlers_["milter_socket"] = [this](auto &&arg) { process_milter_socket(std::forward<decltype(arg)>(arg)); };
     option_handlers_["milter_timeout"] = [this](auto &&arg) {

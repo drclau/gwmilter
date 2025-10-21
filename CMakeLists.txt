@@ -27,6 +27,15 @@ find_package(Boost 1.52.0 REQUIRED COMPONENTS regex)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 
+# Fetch simpleini for INI parsing (needed by cfg2)
+include(FetchContent)
+FetchContent_Declare(
+    simpleini
+    GIT_REPOSITORY https://github.com/brofield/simpleini.git
+    GIT_TAG v4.22
+)
+FetchContent_MakeAvailable(simpleini)
+
 # Use pkg-config to find and configure GLib and GMime
 pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET glib-2.0)
 pkg_check_modules(GMIME REQUIRED IMPORTED_TARGET gmime-3.0)
@@ -51,6 +60,14 @@ add_executable(gwmilter
         src/signal_manager.cpp
         src/cfg/cfg.hpp
         src/cfg/cfg.cpp
+        src/cfg2/section_registry.hpp
+        src/cfg2/section_registry.cpp
+        src/cfg2/config.hpp
+        src/cfg2/config.cpp
+        src/cfg2/config_manager.hpp
+        src/cfg2/config_manager.cpp
+        src/cfg2/ini_reader.hpp
+        src/cfg2/ini_reader.cpp
         src/handlers/body_handler.hpp
         src/handlers/body_handler.cpp
         src/handlers/headers.hpp
@@ -58,8 +75,6 @@ add_executable(gwmilter
         src/handlers/pdf_body_handler.cpp
         src/handlers/pgp_body_handler.cpp
         src/handlers/smime_body_handler.cpp
-        src/logger/logger.hpp
-        src/logger/logger.cpp
         src/milter/milter.hpp
         src/milter/milter.cpp
         src/milter/milter_callbacks.hpp
@@ -77,6 +92,9 @@ add_executable(gwmilter
         src/utils/uid_generator.hpp
         src/utils/dump_email.hpp
         src/utils/dump_email.cpp
+        src/logger/logger.hpp
+        src/logger/spdlog_init.hpp
+        src/logger/spdlog_init.cpp
 )
 
 # Set include directories for gwmilter target
@@ -90,6 +108,7 @@ target_include_directories(gwmilter PRIVATE
         ${EGPGCRYPT_INCLUDE_DIR}
         ${EPDFCRYPT_INCLUDE_DIR}
         ${FMT_INCLUDE_DIRS}
+        ${simpleini_SOURCE_DIR}
 )
 
 # Link libraries to gwmilter target
@@ -125,13 +144,6 @@ endif()
 
 if(ENABLE_CFG2)
     find_package(Threads REQUIRED)
-    include(FetchContent)
-    FetchContent_Declare(
-        simpleini
-        GIT_REPOSITORY https://github.com/brofield/simpleini.git
-        GIT_TAG v4.22
-    )
-    FetchContent_MakeAvailable(simpleini)
 
     # Add cfg2 demo executable with new modular structure
     add_executable(cfg2_demo

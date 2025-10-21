@@ -1,8 +1,8 @@
 #include "config_manager.hpp"
 #include "ini_reader.hpp"
+#include "logger/logger.hpp"
 #include <atomic>
 #include <filesystem>
-#include <spdlog/spdlog.h>
 
 namespace cfg2 {
 
