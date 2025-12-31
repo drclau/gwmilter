@@ -15,6 +15,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
+set(THIRD_PARTY_DIR "${PROJECT_SOURCE_DIR}/third_party" CACHE PATH "Path to third-party sources")
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
@@ -26,15 +27,6 @@ find_package(CURL REQUIRED)
 find_package(Boost 1.52.0 REQUIRED COMPONENTS regex)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
-
-# Fetch simpleini for INI parsing (needed by cfg2)
-include(FetchContent)
-FetchContent_Declare(
-    simpleini
-    GIT_REPOSITORY https://github.com/brofield/simpleini.git
-    GIT_TAG v4.22
-)
-FetchContent_MakeAvailable(simpleini)
 
 # Use pkg-config to find and configure GLib and GMime
 pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET glib-2.0)
@@ -54,74 +46,98 @@ find_path(EPDFCRYPT_INCLUDE_DIR NAMES epdf.hpp HINTS ${EPDFCRYPT_PATH}/include)
 find_library(EPDFCRYPT_LIBRARY NAMES epdfcrypt HINTS ${EPDFCRYPT_PATH}/lib)
 
 # Define the executable and its source files
-add_executable(gwmilter
-        src/main.cpp
-        src/signal_manager.hpp
-        src/signal_manager.cpp
-        src/cfg/cfg.hpp
-        src/cfg/cfg.cpp
-        src/cfg2/section_registry.hpp
-        src/cfg2/section_registry.cpp
-        src/cfg2/config.hpp
-        src/cfg2/config.cpp
-        src/cfg2/config_manager.hpp
-        src/cfg2/config_manager.cpp
-        src/cfg2/ini_reader.hpp
-        src/cfg2/ini_reader.cpp
-        src/handlers/body_handler.hpp
-        src/handlers/body_handler.cpp
-        src/handlers/headers.hpp
-        src/handlers/noop_body_handler.cpp
-        src/handlers/pdf_body_handler.cpp
-        src/handlers/pgp_body_handler.cpp
-        src/handlers/smime_body_handler.cpp
-        src/milter/milter.hpp
-        src/milter/milter.cpp
-        src/milter/milter_callbacks.hpp
-        src/milter/milter_callbacks.cpp
-        src/milter/milter_connection.hpp
-        src/milter/milter_connection.cpp
-        src/milter/milter_exception.hpp
-        src/milter/milter_message.hpp
-        src/milter/milter_message.cpp
-        src/smtp/smtp_client.hpp
-        src/smtp/smtp_client.cpp
-        src/utils/string.hpp
-        src/utils/string.cpp
-        src/utils/uid_generator.cpp
-        src/utils/uid_generator.hpp
-        src/utils/dump_email.hpp
-        src/utils/dump_email.cpp
-        src/logger/logger.hpp
-        src/logger/spdlog_init.hpp
-        src/logger/spdlog_init.cpp
+set(GWMILTER_SOURCES
+    src/main.cpp
+    src/signal_manager.hpp
+    src/signal_manager.cpp
+    src/cfg/cfg.hpp
+    src/cfg/cfg.cpp
+    src/cfg2/section_registry.hpp
+    src/cfg2/section_registry.cpp
+    src/cfg2/config.hpp
+    src/cfg2/config.cpp
+    src/cfg2/config_manager.hpp
+    src/cfg2/config_manager.cpp
+    src/cfg2/ini_reader.hpp
+    src/cfg2/ini_reader.cpp
+    src/handlers/body_handler.hpp
+    src/handlers/body_handler.cpp
+    src/handlers/headers.hpp
+    src/handlers/noop_body_handler.cpp
+    src/handlers/pdf_body_handler.cpp
+    src/handlers/pgp_body_handler.cpp
+    src/handlers/smime_body_handler.cpp
+    src/milter/milter.hpp
+    src/milter/milter.cpp
+    src/milter/milter_callbacks.hpp
+    src/milter/milter_callbacks.cpp
+    src/milter/milter_connection.hpp
+    src/milter/milter_connection.cpp
+    src/milter/milter_exception.hpp
+    src/milter/milter_message.hpp
+    src/milter/milter_message.cpp
+    src/smtp/smtp_client.hpp
+    src/smtp/smtp_client.cpp
+    src/utils/string.hpp
+    src/utils/string.cpp
+    src/utils/uid_generator.cpp
+    src/utils/uid_generator.hpp
+    src/utils/dump_email.hpp
+    src/utils/dump_email.cpp
+    src/logger/logger.hpp
+    src/logger/spdlog_init.hpp
+    src/logger/spdlog_init.cpp
 )
+
+add_executable(gwmilter ${GWMILTER_SOURCES})
+
+# SimpleIni is required for cfg2 INI parsing.
+# Prefer a local copy; only fetch when explicitly enabled.
+option(FETCH_SIMPLEINI "Fetch SimpleIni if not available locally" OFF)
+set(SIMPLEINI_GIT_TAG "v4.25" CACHE STRING "SimpleIni git tag to fetch")
+set(simpleini_local_dir "${THIRD_PARTY_DIR}/simpleini")
+if(EXISTS "${simpleini_local_dir}/SimpleIni.h")
+    set(simpleini_SOURCE_DIR "${simpleini_local_dir}")
+elseif(FETCH_SIMPLEINI)
+    include(FetchContent)
+    FetchContent_Declare(
+        simpleini
+        GIT_REPOSITORY https://github.com/brofield/simpleini.git
+        GIT_TAG ${SIMPLEINI_GIT_TAG}
+    )
+    FetchContent_MakeAvailable(simpleini)
+else()
+    message(FATAL_ERROR "SimpleIni not found. Provide ${THIRD_PARTY_DIR}/simpleini or set FETCH_SIMPLEINI=ON to fetch tag ${SIMPLEINI_GIT_TAG}.")
+endif()
+
+# Toggle cfg2 module and utilities (demo/tests) on demand; default OFF while migrating
+option(ENABLE_CFG2 "Build cfg2 module and utilities (demo/tests)" OFF)
 
 # Set include directories for gwmilter target
 target_include_directories(gwmilter PRIVATE
-        ${PROJECT_SOURCE_DIR}/src
-        ${CURL_INCLUDE_DIRS}
-        ${MILTER_INCLUDE_DIR}
-        ${Boost_INCLUDE_DIRS}
-        ${GLIB_INCLUDE_DIRS}
-        ${GMIME_INCLUDE_DIRS}
-        ${EGPGCRYPT_INCLUDE_DIR}
-        ${EPDFCRYPT_INCLUDE_DIR}
-        ${FMT_INCLUDE_DIRS}
-        ${simpleini_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/src
+    ${CURL_INCLUDE_DIRS}
+    ${MILTER_INCLUDE_DIR}
+    ${Boost_INCLUDE_DIRS}
+    ${GLIB_INCLUDE_DIRS}
+    ${GMIME_INCLUDE_DIRS}
+    ${EGPGCRYPT_INCLUDE_DIR}
+    ${EPDFCRYPT_INCLUDE_DIR}
+    ${FMT_INCLUDE_DIRS}
+    ${simpleini_SOURCE_DIR}
 )
 
 # Link libraries to gwmilter target
 target_link_libraries(gwmilter PRIVATE
-        CURL::libcurl
-        fmt::fmt
-        ${MILTER_LIBRARY}
-        Boost::regex
-        PkgConfig::GLIB
-        PkgConfig::GMIME
-        ${EGPGCRYPT_LIBRARY}
-        ${EPDFCRYPT_LIBRARY}
-        spdlog::spdlog
+    CURL::libcurl
+    fmt::fmt
+    ${MILTER_LIBRARY}
+    Boost::regex
+    PkgConfig::GLIB
+    PkgConfig::GMIME
+    ${EGPGCRYPT_LIBRARY}
+    ${EPDFCRYPT_LIBRARY}
+    spdlog::spdlog
 )
 
 # std::filesystem requires linking against a separate library on older compilers
@@ -130,9 +146,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_L
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
     target_link_libraries(gwmilter PRIVATE c++fs)
 endif()
-
-# Toggle cfg2 module and utilities (demo/tests) on demand; default OFF while migrating
-option(ENABLE_CFG2 "Build cfg2 module and utilities (demo/tests)" OFF)
 
 # Default test toggle: OFF unless explicitly enabled by user or CI
 option(BUILD_TESTING "Enable building tests via CTest/GTest" OFF)
@@ -164,6 +177,7 @@ if(ENABLE_CFG2)
         PRIVATE
         spdlog::spdlog
         Threads::Threads
+        fmt::fmt
     )
 
     set_target_properties(cfg2_demo PROPERTIES
