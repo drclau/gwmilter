@@ -56,7 +56,8 @@ void SignalManager::signalLoop(sigset_t set)
                 assert(new_config != nullptr);
                 try {
                     logging::init_spdlog(new_config->general);
-                    spdlog::info("Configuration and logging reloaded successfully");
+                    spdlog::info("Configuration and logging reloaded successfully. NOTE: changes of milter settings "
+                                 "require a full restart.");
                 } catch (const std::exception &e) {
                     spdlog::error("Failed to reinitialize logging after config reload: {}", e.what());
                     spdlog::warn("Configuration reloaded but logging settings unchanged");

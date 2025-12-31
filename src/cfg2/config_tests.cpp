@@ -385,6 +385,36 @@ TEST_F(ConfigValidationTest, SmimeSectionRejectsRetrievePolicy)
     EXPECT_THROW({ Config config = parse<Config>(invalidSmime); }, std::invalid_argument);
 }
 
+TEST_F(ConfigValidationTest, GeneralSectionRejectsInvalidLogPriority)
+{
+    ConfigNode invalidPriority{"config",
+                               "",
+                               {{"general",
+                                 "",
+                                 {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
+                                  {"log_type", "console", {}, NodeType::VALUE},
+                                  {"log_priority", "verbose", {}, NodeType::VALUE}},
+                                 NodeType::SECTION}},
+                               NodeType::ROOT};
+
+    EXPECT_THROW({ Config config = parse<Config>(invalidPriority); }, std::invalid_argument);
+}
+
+TEST_F(ConfigValidationTest, GeneralSectionRejectsInvalidLogFacility)
+{
+    ConfigNode invalidFacility{"config",
+                               "",
+                               {{"general",
+                                 "",
+                                 {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
+                                  {"log_type", "syslog", {}, NodeType::VALUE},
+                                  {"log_facility", "invalid", {}, NodeType::VALUE}},
+                                 NodeType::SECTION}},
+                               NodeType::ROOT};
+
+    EXPECT_THROW({ Config config = parse<Config>(invalidFacility); }, std::invalid_argument);
+}
+
 TEST_F(ConfigValidationTest, MissingEncryptionProtocolThrowsException)
 {
     ConfigNode missingProtocol{
