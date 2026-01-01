@@ -33,7 +33,7 @@ void init_spdlog(const cfg2::GeneralSection &general_section)
     if (general_section.log_type == "syslog") {
         const auto facility_it = facility_map.find(general_section.log_facility);
         if (facility_it == facility_map.end())
-            throw std::runtime_error(fmt::format("Invalid log_facility: {}", general_section.log_facility));
+            throw std::invalid_argument(fmt::format("Invalid log_facility: {}", general_section.log_facility));
 
         spdlog::drop(CONSOLE_LOGGER_NAME);
         spdlog::drop(SYSLOG_LOGGER_NAME);
@@ -46,12 +46,12 @@ void init_spdlog(const cfg2::GeneralSection &general_section)
             console_logger = spdlog::stdout_color_mt(CONSOLE_LOGGER_NAME);
         spdlog::set_default_logger(console_logger);
     } else {
-        throw std::runtime_error(fmt::format("Invalid log_type: {}", general_section.log_type));
+        throw std::invalid_argument(fmt::format("Invalid log_type: {}", general_section.log_type));
     }
 
     const auto priority_it = priority_map.find(general_section.log_priority);
     if (priority_it == priority_map.end())
-        throw std::runtime_error(fmt::format("Invalid log_priority: {}", general_section.log_priority));
+        throw std::invalid_argument(fmt::format("Invalid log_priority: {}", general_section.log_priority));
 
     spdlog::set_level(priority_it->second);
 }
