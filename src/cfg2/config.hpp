@@ -1,12 +1,17 @@
 #pragma once
 
 #include "section_registry.hpp"
+#include <algorithm>
+#include <array>
 #include <fmt/core.h>
 #include <regex>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
 namespace cfg2 {
+
+using namespace std::string_view_literals;
 
 // Static "general" section
 struct GeneralSection final : BaseSection {
@@ -31,6 +36,23 @@ struct GeneralSection final : BaseSection {
 
         if (log_type != "console" && log_type != "syslog")
             throw std::invalid_argument("Section 'general' must set log_type to 'console' or 'syslog'");
+
+        static constexpr std::array allowed_priorities = {
+            "trace"sv, "debug"sv, "info"sv, "warning"sv, "error"sv, "critical"sv,
+        };
+        if (std::find(allowed_priorities.begin(), allowed_priorities.end(), log_priority) == allowed_priorities.end())
+            throw std::invalid_argument(
+                "Section 'general' must set log_priority to 'trace', 'debug', 'info', 'warning', 'error', or "
+                "'critical'");
+
+        static constexpr std::array allowed_facilities = {
+            "user"sv,   "mail"sv,   "news"sv,   "uucp"sv,   "daemon"sv, "auth"sv,   "cron"sv,   "lpr"sv,
+            "local0"sv, "local1"sv, "local2"sv, "local3"sv, "local4"sv, "local5"sv, "local6"sv, "local7"sv,
+        };
+        if (std::find(allowed_facilities.begin(), allowed_facilities.end(), log_facility) == allowed_facilities.end())
+            throw std::invalid_argument(
+                "Section 'general' must set log_facility to 'user', 'mail', 'news', 'uucp', 'daemon', 'auth', "
+                "'cron', 'lpr', or 'local0' through 'local7'");
 
         if (milter_timeout < -1)
             throw std::invalid_argument("Section 'general' must set milter_timeout >= -1");

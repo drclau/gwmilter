@@ -1,12 +1,12 @@
 #include "config_manager.hpp"
 #include "core.hpp"
+#include "logger/logger.hpp"
 #include <atomic>
 #include <chrono>
 #include <csignal>
 #include <filesystem>
 #include <iostream>
 #include <pthread.h>
-#include <spdlog/spdlog.h>
 #include <thread>
 #include <unistd.h>
 

@@ -1,9 +1,12 @@
 #include "cfg/cfg.hpp"
+#include "cfg2/config_manager.hpp"
 #include "logger/logger.hpp"
+#include "logger/spdlog_init.hpp"
 #include "milter/milter.hpp"
 #include "signal_manager.hpp"
 #include "utils/string.hpp"
 #include <boost/exception/diagnostic_information.hpp>
+#include <cassert>
 #include <cerrno>
 #include <cstdlib>
 #include <fmt/core.h>
@@ -25,7 +28,6 @@ static void print_help()
             "  -c    Path to configuration file\n"
          << endl;
 }
-
 
 void drop_privileges(const std::string &user_name, const std::string &group_name)
 {
@@ -99,28 +101,35 @@ int main(int argc, char *argv[])
         // seed random number generator
         srand(time(nullptr));
 
-        // initialize configuration
-        cfg::cfg::inst().init(config_file);
-        const auto g = cfg::cfg::inst().section(cfg::GENERAL_SECTION);
-        logger::init(cfg::cfg::inst());
+        // Initialize cfg2 configuration system
+        auto config_mgr = cfg2::ConfigManager(config_file);
+        const auto config = config_mgr.getConfig();
+        assert(config != nullptr);
+        const auto &general_cfg = config->general;
 
-        if (g->get<bool>("daemonize")) {
+        // Initialize logging from cfg2
+        logging::init_spdlog(general_cfg);
+
+        // Initialize legacy configuration (for backward compatibility during migration)
+        cfg::cfg::inst().init(config_file);
+
+        if (general_cfg.daemonize) {
             if (daemon(0, 0) == -1) {
                 cerr << "daemon() call failed: " << utils::string::str_err(errno);
                 return EXIT_FAILURE;
             }
         }
 
-        drop_privileges(g->get<string>("user"), g->get<string>("group"));
+        drop_privileges(general_cfg.user, general_cfg.group);
 
-        // Install signal handling
-        SignalManager signal_manager;
+        // Install signal handling with cfg2 reload support
+        SignalManager signal_manager(config_mgr);
 
         spdlog::info("gwmilter starting");
-        gwmilter::milter m(g->get<string>("milter_socket"),
+        gwmilter::milter m(general_cfg.milter_socket,
                            SMFIF_ADDHDRS | SMFIF_CHGHDRS | SMFIF_CHGBODY | SMFIF_ADDRCPT | SMFIF_ADDRCPT_PAR |
                                SMFIF_DELRCPT | SMFIF_QUARANTINE | SMFIF_CHGFROM | SMFIF_SETSYMLIST,
-                           g->get<int>("milter_timeout"));
+                           general_cfg.milter_timeout);
         m.run();
 
         spdlog::info("gwmilter shutting down");

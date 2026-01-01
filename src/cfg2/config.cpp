@@ -1,5 +1,4 @@
 #include "config.hpp"
-#include "logger/logger.hpp"
 #include <fmt/core.h>
 #include <stdexcept>
 #include <unordered_set>

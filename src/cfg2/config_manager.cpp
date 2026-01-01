@@ -1,8 +1,8 @@
 #include "config_manager.hpp"
 #include "ini_reader.hpp"
+#include "logger/logger.hpp"
 #include <atomic>
 #include <filesystem>
-#include <spdlog/spdlog.h>
 
 namespace cfg2 {
 
@@ -13,8 +13,6 @@ ConfigManager::ConfigManager(const std::filesystem::path &config_file)
         // Load and parse the configuration
         ConfigNode root = parseIniFile(config_file_path_);
         current_config_ = std::make_shared<const Config>(deserialize<Config>(root));
-
-        spdlog::info("ConfigManager: Successfully loaded configuration from {}", config_file.string());
     } catch (const std::exception &e) {
         spdlog::error("ConfigManager: Failed to initialize with config file '{}': {}", config_file.string(), e.what());
         throw;
