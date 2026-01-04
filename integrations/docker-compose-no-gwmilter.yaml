@@ -17,6 +17,9 @@ services:
     environment:
       # Use the local gwmilter instance
       - SMTPD_MILTERS=inet:host.docker.internal:10025
+    depends_on: !override
+      mailpit:
+        condition: service_healthy
   mailpit:
     extends:
       file: docker-compose.yaml
