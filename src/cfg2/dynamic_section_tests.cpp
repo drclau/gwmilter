@@ -67,8 +67,8 @@ TEST_F(DynamicSectionTest, RegistryCanCreatePgpSection)
 
     auto *pgpSection = dynamic_cast<PgpEncryptionSection *>(section.get());
     EXPECT_NE(pgpSection, nullptr);
-    EXPECT_EQ(pgpSection->encryption_protocol, "pgp");
-    EXPECT_EQ(pgpSection->key_not_found_policy, "retrieve");
+    EXPECT_EQ(pgpSection->encryption_protocol, EncryptionProtocol::Pgp);
+    EXPECT_EQ(pgpSection->key_not_found_policy, KeyNotFoundPolicy::Retrieve);
     EXPECT_EQ(pgpSection->sectionName, "pgp_section");
     EXPECT_EQ(pgpSection->type, "pgp");
 }
@@ -88,7 +88,7 @@ TEST_F(DynamicSectionTest, RegistryCanCreatePdfSection)
 
     auto *pdfSection = dynamic_cast<PdfEncryptionSection *>(section.get());
     EXPECT_NE(pdfSection, nullptr);
-    EXPECT_EQ(pdfSection->encryption_protocol, "pdf");
+    EXPECT_EQ(pdfSection->encryption_protocol, EncryptionProtocol::Pdf);
     EXPECT_FLOAT_EQ(pdfSection->pdf_font_size, 12.0f);
     EXPECT_EQ(pdfSection->pdf_attachment, "secure.pdf");
     EXPECT_EQ(pdfSection->sectionName, "pdf_section");
@@ -109,8 +109,8 @@ TEST_F(DynamicSectionTest, RegistryCanCreateSmimeSection)
 
     auto *smimeSection = dynamic_cast<SmimeEncryptionSection *>(section.get());
     EXPECT_NE(smimeSection, nullptr);
-    EXPECT_EQ(smimeSection->encryption_protocol, "smime");
-    EXPECT_EQ(smimeSection->key_not_found_policy, "discard");
+    EXPECT_EQ(smimeSection->encryption_protocol, EncryptionProtocol::Smime);
+    EXPECT_EQ(smimeSection->key_not_found_policy, KeyNotFoundPolicy::Discard);
     EXPECT_EQ(smimeSection->sectionName, "smime_section");
     EXPECT_EQ(smimeSection->type, "smime");
 }
@@ -128,7 +128,7 @@ TEST_F(DynamicSectionTest, RegistryCanCreateNoneSection)
 
     auto *noneSection = dynamic_cast<NoneEncryptionSection *>(section.get());
     EXPECT_NE(noneSection, nullptr);
-    EXPECT_EQ(noneSection->encryption_protocol, "none");
+    EXPECT_EQ(noneSection->encryption_protocol, EncryptionProtocol::None);
     EXPECT_EQ(noneSection->sectionName, "none_section");
     EXPECT_EQ(noneSection->type, "none");
 }

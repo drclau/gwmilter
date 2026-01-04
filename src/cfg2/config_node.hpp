@@ -1,5 +1,6 @@
 #pragma once
 
+#include "enums.hpp"
 #include <algorithm>
 #include <cctype>
 #include <fmt/core.h>

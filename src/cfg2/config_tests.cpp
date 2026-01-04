@@ -84,15 +84,15 @@ TEST_F(ConfigTest, ConfigFindMatchWorksCorrectly)
     // Test successful matches
     auto *internal = config.find_match("user@company.com");
     EXPECT_NE(internal, nullptr);
-    EXPECT_EQ(internal->encryption_protocol, "pgp");
+    EXPECT_EQ(internal->encryption_protocol, EncryptionProtocol::Pgp);
 
     auto *external = config.find_match("client@external.com");
     EXPECT_NE(external, nullptr);
-    EXPECT_EQ(external->encryption_protocol, "pdf");
+    EXPECT_EQ(external->encryption_protocol, EncryptionProtocol::Pdf);
 
     auto *none = config.find_match("newsletter@public.org");
     EXPECT_NE(none, nullptr);
-    EXPECT_EQ(none->encryption_protocol, "none");
+    EXPECT_EQ(none->encryption_protocol, EncryptionProtocol::None);
 
     // Test no match
     auto *noMatch = config.find_match("user@nowhere.com");
@@ -132,13 +132,13 @@ TEST_F(ConfigTest, FindMatchReturnsSecondSection)
     // Test that second section is matched correctly
     auto *match = config.find_match("user@second.com");
     EXPECT_NE(match, nullptr);
-    EXPECT_EQ(match->encryption_protocol, "pdf");
+    EXPECT_EQ(match->encryption_protocol, EncryptionProtocol::Pdf);
     EXPECT_EQ(match->sectionName, "second_section");
 
     // Test that third section is matched correctly
     auto *thirdMatch = config.find_match("user@third.com");
     EXPECT_NE(thirdMatch, nullptr);
-    EXPECT_EQ(thirdMatch->encryption_protocol, "none");
+    EXPECT_EQ(thirdMatch->encryption_protocol, EncryptionProtocol::None);
     EXPECT_EQ(thirdMatch->sectionName, "third_section");
 }
 
@@ -190,7 +190,7 @@ TEST_F(ConfigTest, FindMatchReturnsFirstMatchOnly)
     // Both sections match, but should return first one
     auto *match = config.find_match("user@test.com");
     EXPECT_NE(match, nullptr);
-    EXPECT_EQ(match->encryption_protocol, "pgp");
+    EXPECT_EQ(match->encryption_protocol, EncryptionProtocol::Pgp);
     EXPECT_EQ(match->sectionName, "first_match");
 }
 
@@ -230,9 +230,9 @@ TEST_F(ConfigTest, ConfigHandlesMultipleEncryptionSections)
     EXPECT_EQ(config.encryptionSections.size(), 3);
 
     // Test order is preserved
-    EXPECT_EQ(config.encryptionSections[0]->encryption_protocol, "pgp");
-    EXPECT_EQ(config.encryptionSections[1]->encryption_protocol, "pdf");
-    EXPECT_EQ(config.encryptionSections[2]->encryption_protocol, "pgp");
+    EXPECT_EQ(config.encryptionSections[0]->encryption_protocol, EncryptionProtocol::Pgp);
+    EXPECT_EQ(config.encryptionSections[1]->encryption_protocol, EncryptionProtocol::Pdf);
+    EXPECT_EQ(config.encryptionSections[2]->encryption_protocol, EncryptionProtocol::Pgp);
 
     // Test find_match returns first match
     auto *match = config.find_match("test@secure.com");
@@ -321,26 +321,26 @@ TEST_F(ConfigTest, DynamicSectionsWithSameNameAsTypeAreHandledCorrectly)
     EXPECT_EQ(config.encryptionSections.size(), 4);
 
     // Verify each section has correct protocol and section name
-    EXPECT_EQ(config.encryptionSections[0]->encryption_protocol, "pgp");
+    EXPECT_EQ(config.encryptionSections[0]->encryption_protocol, EncryptionProtocol::Pgp);
     EXPECT_EQ(config.encryptionSections[0]->sectionName, "pgp");
 
-    EXPECT_EQ(config.encryptionSections[1]->encryption_protocol, "smime");
+    EXPECT_EQ(config.encryptionSections[1]->encryption_protocol, EncryptionProtocol::Smime);
     EXPECT_EQ(config.encryptionSections[1]->sectionName, "smime");
 
-    EXPECT_EQ(config.encryptionSections[2]->encryption_protocol, "pdf");
+    EXPECT_EQ(config.encryptionSections[2]->encryption_protocol, EncryptionProtocol::Pdf);
     EXPECT_EQ(config.encryptionSections[2]->sectionName, "pdf");
 
-    EXPECT_EQ(config.encryptionSections[3]->encryption_protocol, "none");
+    EXPECT_EQ(config.encryptionSections[3]->encryption_protocol, EncryptionProtocol::None);
     EXPECT_EQ(config.encryptionSections[3]->sectionName, "none");
 
     // Verify that find_match works correctly
     auto *pgpMatch = config.find_match("test@pgp.com");
     EXPECT_NE(pgpMatch, nullptr);
-    EXPECT_EQ(pgpMatch->encryption_protocol, "pgp");
+    EXPECT_EQ(pgpMatch->encryption_protocol, EncryptionProtocol::Pgp);
 
     auto *smimeMatch = config.find_match("test@smime.com");
     EXPECT_NE(smimeMatch, nullptr);
-    EXPECT_EQ(smimeMatch->encryption_protocol, "smime");
+    EXPECT_EQ(smimeMatch->encryption_protocol, EncryptionProtocol::Smime);
 }
 
 TEST_F(ConfigValidationTest, PgpSectionRejectsInvalidKeyPolicy)

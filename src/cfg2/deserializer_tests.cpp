@@ -64,8 +64,8 @@ TEST_F(DeserializerTest, DeserializePgpEncryptionSection)
     EXPECT_EQ(result.match.size(), 2);
     EXPECT_EQ(result.match[0], ".*@secure\\.com");
     EXPECT_EQ(result.match[1], "admin@.*");
-    EXPECT_EQ(result.encryption_protocol, "pgp");
-    EXPECT_EQ(result.key_not_found_policy, "reject");
+    EXPECT_EQ(result.encryption_protocol, EncryptionProtocol::Pgp);
+    EXPECT_EQ(result.key_not_found_policy, KeyNotFoundPolicy::Reject);
 }
 
 TEST_F(DeserializerTest, DeserializeSmimeEncryptionSection)
@@ -82,8 +82,8 @@ TEST_F(DeserializerTest, DeserializeSmimeEncryptionSection)
     EXPECT_EQ(result.match.size(), 2);
     EXPECT_EQ(result.match[0], ".*@secure\\.com");
     EXPECT_EQ(result.match[1], "admin@.*");
-    EXPECT_EQ(result.encryption_protocol, "smime");
-    EXPECT_EQ(result.key_not_found_policy, "reject");
+    EXPECT_EQ(result.encryption_protocol, EncryptionProtocol::Smime);
+    EXPECT_EQ(result.key_not_found_policy, KeyNotFoundPolicy::Reject);
 }
 
 TEST_F(DeserializerTest, DeserializePdfEncryptionSection)
@@ -101,7 +101,7 @@ TEST_F(DeserializerTest, DeserializePdfEncryptionSection)
 
     EXPECT_EQ(result.match.size(), 1);
     EXPECT_EQ(result.match[0], ".*@external\\.org");
-    EXPECT_EQ(result.encryption_protocol, "pdf");
+    EXPECT_EQ(result.encryption_protocol, EncryptionProtocol::Pdf);
     EXPECT_FLOAT_EQ(result.pdf_font_size, 14.5f);
     EXPECT_FLOAT_EQ(result.pdf_margin, 20.0f);
     EXPECT_EQ(result.pdf_attachment, "secure_email.pdf");

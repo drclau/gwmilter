@@ -48,15 +48,15 @@ TEST_F(MultipleSameTypeTest, MultipleSectionsWithSameTypeAreSupported)
     EXPECT_EQ(config.encryptionSections.size(), 3);
 
     // Verify that all sections have the same type but different names and configurations
-    EXPECT_EQ(config.encryptionSections[0]->encryption_protocol, "pgp");
+    EXPECT_EQ(config.encryptionSections[0]->encryption_protocol, EncryptionProtocol::Pgp);
     EXPECT_EQ(config.encryptionSections[0]->sectionName, "pgp_internal");
     EXPECT_EQ(config.encryptionSections[0]->type, "pgp");
 
-    EXPECT_EQ(config.encryptionSections[1]->encryption_protocol, "pgp");
+    EXPECT_EQ(config.encryptionSections[1]->encryption_protocol, EncryptionProtocol::Pgp);
     EXPECT_EQ(config.encryptionSections[1]->sectionName, "pgp_external");
     EXPECT_EQ(config.encryptionSections[1]->type, "pgp");
 
-    EXPECT_EQ(config.encryptionSections[2]->encryption_protocol, "pgp");
+    EXPECT_EQ(config.encryptionSections[2]->encryption_protocol, EncryptionProtocol::Pgp);
     EXPECT_EQ(config.encryptionSections[2]->sectionName, "pgp_partners");
     EXPECT_EQ(config.encryptionSections[2]->type, "pgp");
 
@@ -129,10 +129,10 @@ TEST_F(MultipleSameTypeTest, MultipleSectionsWithDifferentTypesAlsoWork)
     EXPECT_EQ(config.encryptionSections.size(), 4);
 
     // Test that each section works correctly
-    EXPECT_EQ(config.find_match("user@pgp1.com")->encryption_protocol, "pgp");
-    EXPECT_EQ(config.find_match("user@pgp2.com")->encryption_protocol, "pgp");
-    EXPECT_EQ(config.find_match("user@pdf1.com")->encryption_protocol, "pdf");
-    EXPECT_EQ(config.find_match("user@pdf2.com")->encryption_protocol, "pdf");
+    EXPECT_EQ(config.find_match("user@pgp1.com")->encryption_protocol, EncryptionProtocol::Pgp);
+    EXPECT_EQ(config.find_match("user@pgp2.com")->encryption_protocol, EncryptionProtocol::Pgp);
+    EXPECT_EQ(config.find_match("user@pdf1.com")->encryption_protocol, EncryptionProtocol::Pdf);
+    EXPECT_EQ(config.find_match("user@pdf2.com")->encryption_protocol, EncryptionProtocol::Pdf);
 
     // Verify different section configurations
     auto *pgpSection1 = dynamic_cast<PgpEncryptionSection *>(config.encryptionSections[0].get());
@@ -140,8 +140,8 @@ TEST_F(MultipleSameTypeTest, MultipleSectionsWithDifferentTypesAlsoWork)
     auto *pdfSection1 = dynamic_cast<PdfEncryptionSection *>(config.encryptionSections[2].get());
     auto *pdfSection2 = dynamic_cast<PdfEncryptionSection *>(config.encryptionSections[3].get());
 
-    EXPECT_EQ(pgpSection1->key_not_found_policy, "retrieve");
-    EXPECT_EQ(pgpSection2->key_not_found_policy, "reject");
+    EXPECT_EQ(pgpSection1->key_not_found_policy, KeyNotFoundPolicy::Retrieve);
+    EXPECT_EQ(pgpSection2->key_not_found_policy, KeyNotFoundPolicy::Reject);
     EXPECT_FLOAT_EQ(pdfSection1->pdf_font_size, 10.0f);
     EXPECT_FLOAT_EQ(pdfSection2->pdf_font_size, 14.0f);
 }
