@@ -1,3 +1,4 @@
+import os
 import re
 import subprocess
 from typing import Any, Dict
@@ -151,6 +152,14 @@ def gpg_wrapper():
     wrapper = GPGTestWrapper()
     yield wrapper
     wrapper.cleanup()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def ensure_gnupghome():
+    """Default GNUPGHOME for tests unless already set."""
+    if "GNUPGHOME" not in os.environ or not os.environ["GNUPGHOME"]:
+        os.environ["GNUPGHOME"] = str(PROJECT_ROOT / "integrations" / "gnupg")
+        print(f"GNUPGHOME defaulted to: {os.environ['GNUPGHOME']}")
 
 
 def run_key_cleanup(pattern, pgp_utils_args):
