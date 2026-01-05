@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <fmt/core.h>
+#include <optional>
 #include <regex>
 #include <string_view>
 #include <type_traits>

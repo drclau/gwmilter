@@ -107,7 +107,8 @@ void printConfig(const Config &config)
     std::cout << "Log Type: " << config.general.log_type << "\n";
     std::cout << "Encryption Sections: " << config.encryptionSections.size() << "\n";
     for (const auto &section: config.encryptionSections)
-        std::cout << "  - [" << section->sectionName << "] protocol: " << toString(section->encryption_protocol) << "\n";
+        std::cout << "  - [" << section->sectionName << "] protocol: " << toString(section->encryption_protocol)
+                  << "\n";
     std::cout << "============================\n\n";
 }
 
