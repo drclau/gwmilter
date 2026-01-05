@@ -1,10 +1,10 @@
 #pragma once
 
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 
+#include "utils/string.hpp"
 namespace cfg2 {
 
 // Encryption protocol types
@@ -18,24 +18,26 @@ template<typename T> T fromString(const std::string &str);
 
 template<> [[nodiscard]] inline EncryptionProtocol fromString<EncryptionProtocol>(const std::string &str)
 {
-    if (str == "pgp")
+    const std::string lower = gwmilter::utils::string::to_lower(str);
+    if (lower == "pgp")
         return EncryptionProtocol::Pgp;
-    if (str == "smime")
+    if (lower == "smime")
         return EncryptionProtocol::Smime;
-    if (str == "pdf")
+    if (lower == "pdf")
         return EncryptionProtocol::Pdf;
-    if (str == "none")
+    if (lower == "none")
         return EncryptionProtocol::None;
     throw std::invalid_argument("Invalid encryption_protocol value: " + str + " (expected: pgp, smime, pdf, none)");
 }
 
 template<> [[nodiscard]] inline KeyNotFoundPolicy fromString<KeyNotFoundPolicy>(const std::string &str)
 {
-    if (str == "discard")
+    const std::string lower = gwmilter::utils::string::to_lower(str);
+    if (lower == "discard")
         return KeyNotFoundPolicy::Discard;
-    if (str == "retrieve")
+    if (lower == "retrieve")
         return KeyNotFoundPolicy::Retrieve;
-    if (str == "reject")
+    if (lower == "reject")
         return KeyNotFoundPolicy::Reject;
     throw std::invalid_argument("Invalid key_not_found_policy value: " + str +
                                 " (expected: discard, retrieve, reject)");
@@ -54,7 +56,7 @@ template<> [[nodiscard]] inline KeyNotFoundPolicy fromString<KeyNotFoundPolicy>(
     case EncryptionProtocol::None:
         return "none";
     }
-    return "unknown";
+    __builtin_unreachable();
 }
 
 [[nodiscard]] inline std::string_view toString(KeyNotFoundPolicy p)
@@ -67,7 +69,7 @@ template<> [[nodiscard]] inline KeyNotFoundPolicy fromString<KeyNotFoundPolicy>(
     case KeyNotFoundPolicy::Reject:
         return "reject";
     }
-    return "unknown";
+    __builtin_unreachable();
 }
 
 } // namespace cfg2

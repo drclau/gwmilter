@@ -1,8 +1,7 @@
 #pragma once
 
 #include "enums.hpp"
-#include <algorithm>
-#include <cctype>
+#include "utils/string.hpp"
 #include <fmt/core.h>
 #include <sstream>
 #include <stdexcept>
@@ -79,8 +78,7 @@ template<typename T> [[nodiscard]] T fromString(const std::string &str)
 // Specialized bool conversion for user-friendly values
 template<> [[nodiscard]] inline bool fromString<bool>(const std::string &str)
 {
-    std::string lower = str;
-    std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
+    std::string lower = gwmilter::utils::string::to_lower(str);
 
     if (lower == "true" || lower == "1" || lower == "yes" || lower == "on")
         return true;
