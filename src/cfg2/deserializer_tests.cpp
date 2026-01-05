@@ -303,6 +303,37 @@ TEST_F(FromStringTest, StringConversion)
     EXPECT_EQ(fromString<std::string>("123"), "123");
 }
 
+TEST_F(FromStringTest, EncryptionProtocolConversion)
+{
+    EXPECT_EQ(fromString<EncryptionProtocol>("pgp"), EncryptionProtocol::Pgp);
+    EXPECT_EQ(fromString<EncryptionProtocol>("smime"), EncryptionProtocol::Smime);
+    EXPECT_EQ(fromString<EncryptionProtocol>("pdf"), EncryptionProtocol::Pdf);
+    EXPECT_EQ(fromString<EncryptionProtocol>("none"), EncryptionProtocol::None);
+}
+
+TEST_F(FromStringTest, EncryptionProtocolInvalidValue)
+{
+    EXPECT_THROW(static_cast<void>(fromString<EncryptionProtocol>("invalid")), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(fromString<EncryptionProtocol>("PGP")), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(fromString<EncryptionProtocol>("")), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(fromString<EncryptionProtocol>("pgp2")), std::invalid_argument);
+}
+
+TEST_F(FromStringTest, KeyNotFoundPolicyConversion)
+{
+    EXPECT_EQ(fromString<KeyNotFoundPolicy>("discard"), KeyNotFoundPolicy::Discard);
+    EXPECT_EQ(fromString<KeyNotFoundPolicy>("retrieve"), KeyNotFoundPolicy::Retrieve);
+    EXPECT_EQ(fromString<KeyNotFoundPolicy>("reject"), KeyNotFoundPolicy::Reject);
+}
+
+TEST_F(FromStringTest, KeyNotFoundPolicyInvalidValue)
+{
+    EXPECT_THROW(static_cast<void>(fromString<KeyNotFoundPolicy>("invalid")), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(fromString<KeyNotFoundPolicy>("DISCARD")), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(fromString<KeyNotFoundPolicy>("")), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(fromString<KeyNotFoundPolicy>("discard2")), std::invalid_argument);
+}
+
 class DeserializerErrorTest : public ::testing::Test {
 protected:
     void SetUp() override { }
