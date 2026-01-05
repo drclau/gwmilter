@@ -57,6 +57,8 @@ After resolving the dependencies and cloning the repository:
     cmake --build build
     ```
 
+> **Note:** Warnings are treated as errors by default. To disable this for local builds, configure with `-DWERROR=OFF`.
+
 > **TIP:**<br>For faster builds specify the number of parallel jobs:<br>`cmake --build build -- -j4`<br>or use all available CPU cores:<br>`cmake --build build -- -j$(nproc)`
 
 The **gwmilter** executable will be created in the `build/` directory (e.g., `./build/gwmilter`). Ensure you have a recent build of this executable, especially if you've made code changes.

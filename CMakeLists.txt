@@ -17,9 +17,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(THIRD_PARTY_DIR "${PROJECT_SOURCE_DIR}/third_party" CACHE PATH "Path to third-party sources")
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-endif()
+option(WERROR "Treat warnings as errors" ON)
+
 
 # Find necessary packages
 find_package(PkgConfig REQUIRED)
@@ -90,6 +89,13 @@ set(GWMILTER_SOURCES
 )
 
 add_executable(gwmilter ${GWMILTER_SOURCES})
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(gwmilter PRIVATE -Wall)
+    if(WERROR)
+        target_compile_options(gwmilter PRIVATE -Werror)
+    endif()
+endif()
 
 # SimpleIni is required for cfg2 INI parsing.
 # Prefer a local copy; only fetch when explicitly enabled.
