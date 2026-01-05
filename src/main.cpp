@@ -114,10 +114,19 @@ int main(int argc, char *argv[])
         cfg::cfg::inst().init(config_file);
 
         if (general_cfg.daemonize) {
+#if defined(__APPLE__) && defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
             if (daemon(0, 0) == -1) {
                 cerr << "daemon() call failed: " << utils::string::str_err(errno);
                 return EXIT_FAILURE;
             }
+
+#if defined(__APPLE__) && defined(__clang__)
+#pragma clang diagnostic pop
+#endif
         }
 
         drop_privileges(general_cfg.user, general_cfg.group);
