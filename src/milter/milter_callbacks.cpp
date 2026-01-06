@@ -1,11 +1,19 @@
 #include "milter_callbacks.hpp"
+#include "cfg2/config.hpp"
 #include "logger/logger.hpp"
 #include "milter_connection.hpp"
+#include <atomic>
+#include <cassert>
+#include <exception>
 #include <libmilter/mfapi.h>
 #include <string>
 #include <vector>
 
 namespace gwmilter {
+
+namespace {
+std::shared_ptr<const cfg2::Config> g_config;
+} // namespace
 
 sfsistat xxfi_connect(SMFICTX *ctx, char *hostname, _SOCK_ADDR *hostaddr)
 {
@@ -205,5 +213,24 @@ sfsistat xxfi_abort(SMFICTX *ctx)
 
     return SMFIS_TEMPFAIL;
 }
+
+namespace callbacks {
+
+void set_config(std::shared_ptr<const cfg2::Config> config)
+{
+    std::atomic_store(&g_config, std::move(config));
+}
+
+std::shared_ptr<const cfg2::Config> get_config()
+{
+    auto config = std::atomic_load(&g_config);
+    if (!config) {
+        spdlog::critical("milter callbacks config is not initialized");
+        std::terminate();
+    }
+    return config;
+}
+
+} // namespace callbacks
 
 } // namespace gwmilter

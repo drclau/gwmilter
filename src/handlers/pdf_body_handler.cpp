@@ -1,5 +1,5 @@
 #include "body_handler.hpp"
-#include "cfg/cfg.hpp"
+#include "cfg2/config.hpp"
 #include "logger/logger.hpp"
 #include <algorithm>
 #include <boost/algorithm/string/predicate.hpp>
@@ -9,15 +9,16 @@ namespace gwmilter {
 
 using std::string;
 
-pdf_body_handler::pdf_body_handler(const std::shared_ptr<cfg::encryption_section_handler> &settings)
-    : main_boundary_{generate_boundary(30)}, settings_{settings}
-{
-    if (!settings_)
-        throw std::runtime_error("PDF encryption settings are not provided");
-
-    const auto &attachment = settings_->get<string>("pdf_attachment");
-    pdf_attachment_ = attachment.empty() ? "email.pdf" : attachment;
-}
+pdf_body_handler::pdf_body_handler(const cfg2::PdfEncryptionSection &settings)
+    : main_boundary_{generate_boundary(30)},
+      pdf_attachment_{settings.pdf_attachment},
+      pdf_font_path_{settings.pdf_font_path},
+      pdf_font_size_{settings.pdf_font_size},
+      pdf_margin_{settings.pdf_margin},
+      pdf_password_{settings.pdf_password},
+      pdf_main_page_if_missing_{settings.pdf_main_page_if_missing},
+      email_body_replacement_{settings.email_body_replacement}
+{ }
 
 
 void pdf_body_handler::write(const std::string &data)
@@ -58,21 +59,19 @@ void pdf_body_handler::encrypt(const recipients_type &recipients, std::string &o
     unpacker.unpack();
     string body = unpacker.body_text();
 
-    spdlog::debug("PDF settings: pdf_font_path=\"{}\", pdf_font_size={}, pdf_margin={})",
-                  settings_->get<string>("pdf_font_path"), settings_->get<float>("pdf_font_size"),
-                  settings_->get<float>("pdf_margin"));
-    epdf pdf(settings_->get<string>("pdf_font_path"), true, settings_->get<float>("pdf_font_size"),
-             settings_->get<float>("pdf_margin"));
+    spdlog::debug("PDF settings: pdf_font_path=\"{}\", pdf_font_size={}, pdf_margin={})", pdf_font_path_,
+                  pdf_font_size_, pdf_margin_);
+    epdf pdf(pdf_font_path_, true, pdf_font_size_, pdf_margin_);
 
-    if (const auto password = settings_->get<string>("pdf_password"); !password.empty())
-        pdf.set_password(password);
+    if (!pdf_password_.empty())
+        pdf.set_password(pdf_password_);
 
     if (!body.empty()) {
         spdlog::debug("PDF body created from email; size={}", body.size());
         pdf.add_text(body);
-    } else if (const auto filename = settings_->get<string>("pdf_main_page_if_missing"); !filename.empty()) {
+    } else if (!pdf_main_page_if_missing_.empty()) {
         spdlog::debug("PDF body set from file (could not get from email)");
-        pdf.add_text(pdf_body_handler::read_file(filename));
+        pdf.add_text(pdf_body_handler::read_file(pdf_main_page_if_missing_));
     } else
         spdlog::debug("PDF body left empty");
 
@@ -89,9 +88,9 @@ void pdf_body_handler::encrypt(const recipients_type &recipients, std::string &o
         "\r\n";
     // clang-format on
 
-    if (const auto filename = settings_->get<string>("email_body_replacement"); !filename.empty()) {
+    if (!email_body_replacement_.empty()) {
         spdlog::debug("email body replaced");
-        out += pdf_body_handler::read_file(filename);
+        out += pdf_body_handler::read_file(email_body_replacement_);
     }
 
     // clang-format off
@@ -147,7 +146,9 @@ void pdf_body_handler::postprocess()
 
 bool pdf_body_handler::has_public_key(const std::string &recipient) const
 {
-    // NOTE: the notion of public key does not apply to PDF encryption
+    // PDF encryption doesn't use public key infrastructure.
+    // Returning true ensures key_not_found_policy is never checked for PDF sections
+    // (see milter_message::on_envrcpt and BaseEncryptionSection::key_not_found_policy_value).
     return true;
 }
 

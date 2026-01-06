@@ -1,5 +1,4 @@
 #pragma once
-#include "cfg/cfg.hpp"
 #include "handlers/body_handler.hpp"
 #include "smtp/smtp_client.hpp"
 #include "utils/uid_generator.hpp"
@@ -7,9 +6,15 @@
 #include <data_buffers.hpp>
 #include <libmilter/mfapi.h>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
+
+namespace cfg2 {
+struct Config;
+struct BaseEncryptionSection;
+} // namespace cfg2
 
 namespace gwmilter {
 
@@ -18,7 +23,7 @@ class milter_message {
     struct email_context;
 
 public:
-    explicit milter_message(SMFICTX *ctx, const std::string &connection_id);
+    explicit milter_message(SMFICTX *ctx, const std::string &connection_id, std::shared_ptr<const cfg2::Config> config);
     ~milter_message();
     milter_message(const milter_message &) = delete;
     milter_message &operator=(const milter_message &) = delete;
@@ -40,7 +45,7 @@ private:
                                   std::string::size_type max_line_size = RFC5322_MAX_LINE_SIZE);
     static void unpack_header_value(std::string &value);
     // Returns the context attached to the configuration section; creates a new one if necessary
-    email_context &get_context(const std::shared_ptr<cfg::encryption_section_handler> &gs);
+    email_context &get_context(const cfg2::BaseEncryptionSection *section);
     // Removes milter recipients that are not present in good_recipients
     void update_milter_recipients(const std::set<std::string> &good_recipients) const;
     void set_reply(const char *, const char *, const char *) const;
@@ -49,6 +54,7 @@ private:
     const static std::string x_gwmilter_signature;
 
     SMFICTX *smfictx_;
+    std::shared_ptr<const cfg2::Config> config_;
 
     uid_generator uid_gen_;
     std::string connection_id_;

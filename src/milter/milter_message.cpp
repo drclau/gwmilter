@@ -1,5 +1,6 @@
 #include "milter_message.hpp"
 #include "cfg/cfg.hpp"
+#include "cfg2/config.hpp"
 #include "handlers/body_handler.hpp"
 #include "logger/logger.hpp"
 #include "milter_exception.hpp"
@@ -7,6 +8,7 @@
 #include "utils/dump_email.hpp"
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/exception/diagnostic_information.hpp>
+#include <cassert>
 #include <libmilter/mfapi.h>
 #include <memory>
 #include <string>
@@ -16,9 +18,11 @@ namespace gwmilter {
 
 const std::string milter_message::x_gwmilter_signature = "X-GWMilter-Signature";
 
-milter_message::milter_message(SMFICTX *ctx, const std::string &connection_id)
-    : smfictx_{ctx}, connection_id_{connection_id}, message_id_{uid_gen_.generate()}
+milter_message::milter_message(SMFICTX *ctx, const std::string &connection_id,
+                               std::shared_ptr<const cfg2::Config> config)
+    : smfictx_{ctx}, config_{std::move(config)}, connection_id_{connection_id}, message_id_{uid_gen_.generate()}
 {
+    assert(config_ != nullptr && "milter_message requires non-null config");
     spdlog::info("{}: begin message (connection_id={})", message_id_, connection_id_);
 }
 
@@ -51,30 +55,40 @@ sfsistat milter_message::on_envrcpt(const std::vector<std::string> &args)
 
     const std::string &rcpt = args[0];
     spdlog::info("{}: to={}", message_id_, rcpt);
-    std::shared_ptr<cfg::encryption_section_handler> gs = cfg::cfg::inst().find_match(rcpt);
 
-    if (gs == nullptr) {
+    // Look up encryption section in cfg2
+    const cfg2::BaseEncryptionSection *section = config_->find_match(rcpt);
+
+    if (section == nullptr) {
         // recipient doesn't match any section, hence reject it
         set_reply("550", "5.7.1", "recipient does not match any configuration section");
         spdlog::warn("{}: recipient {} was not found in any section, rejecting", message_id_, rcpt);
         return SMFIS_REJECT;
     }
 
-    spdlog::debug("{}: recipient {} was found in section {}", message_id_, rcpt, gs->name());
-    email_context &context = get_context(gs);
+    spdlog::debug("{}: recipient {} was found in section {}", message_id_, rcpt, section->sectionName);
+    email_context &context = get_context(section);
 
     if (context.body_handler->has_public_key(rcpt)) {
         spdlog::debug("{}: found public key in local keyring for {}", message_id_, rcpt);
         context.recipients[rcpt] = true;
     } else {
         spdlog::debug("{}: couldn't find public key in local keyring for {}", message_id_, rcpt);
-        switch (gs->get<cfg::key_not_found_policy_enum>("key_not_found_policy")) {
-        case cfg::discard:
+
+        // Get key_not_found_policy from cfg2 section (only pgp/smime expose a value).
+        const auto policy = section->key_not_found_policy_value();
+        if (!policy.has_value()) {
+            spdlog::error("{}: section {} missing key_not_found_policy for recipient {}", message_id_,
+                          section->sectionName, rcpt);
+            set_reply("451", "4.3.0", "Temporary configuration error");
+            return SMFIS_TEMPFAIL;
+        }
+        switch (*policy) {
+        case cfg2::KeyNotFoundPolicy::Discard:
             spdlog::warn("{}: discarding recipient {}", message_id_, rcpt);
             context.recipients[rcpt] = false;
             break;
-
-        case cfg::retrieve:
+        case cfg2::KeyNotFoundPolicy::Retrieve:
             // XXX: maybe the key importing should be done in another place to
             // avoid delays or timeouts in this part of the MTA-to-MTA communication
             if (context.body_handler->import_public_key(rcpt)) {
@@ -85,12 +99,13 @@ sfsistat milter_message::on_envrcpt(const std::vector<std::string> &args)
                 context.recipients[rcpt] = false;
             }
             break;
-
-        case cfg::reject:
+        case cfg2::KeyNotFoundPolicy::Reject:
             set_reply("550", "5.7.1", "Recipient does not have a public key");
             spdlog::warn("{}: rejected recipient {} due to missing public key", message_id_, rcpt);
             return SMFIS_REJECT;
         }
+        // Empty policy means key management doesn't apply (PDF/NONE sections).
+        // This path is unreachable since their handlers always return true from has_public_key().
     }
 
     recipients_all_.emplace_back(rcpt);
@@ -162,7 +177,8 @@ sfsistat milter_message::on_eom()
 {
     spdlog::debug("{}: end-of-message", message_id_);
 
-    utils::dump_email dmp("dump", "crash-", connection_id_, message_id_, headers_, body_, true);
+    utils::dump_email dmp("dump", "crash-", connection_id_, message_id_, headers_, body_, true,
+                          config_->general.dump_email_on_panic);
 
     try {
         if (!signature_header_.empty()) {
@@ -184,7 +200,6 @@ sfsistat milter_message::on_eom()
 
     try {
         // process all matching configuration sections for current milter message
-        auto g = cfg::cfg::inst().section(cfg::GENERAL_SECTION);
         std::vector<smtp::work_item> smtp_work_items;
 
         bool milter_body_replaced = false;
@@ -228,14 +243,14 @@ sfsistat milter_message::on_eom()
             } else {
                 // only one key is used to sign
                 std::set<std::string> keys;
-                keys.insert(g->get<std::string>("signing_key"));
+                keys.insert(config_->general.signing_key);
                 std::string signature;
                 sign(keys, *ctx.encrypted_body, signature);
                 pack_header_value(signature, x_gwmilter_signature.size());
 
                 headers.emplace_back(x_gwmilter_signature, signature, 1, true);
 
-                smtp::work_item wi(g->get<std::string>("smtp_server"));
+                smtp::work_item wi(config_->general.smtp_server);
                 wi.set_sender(sender_);
                 wi.set_recipients(ctx.good_recipients);
                 wi.set_message(headers, ctx.encrypted_body);
@@ -244,7 +259,7 @@ sfsistat milter_message::on_eom()
         }
 
         if (!smtp_work_items.empty()) {
-            smtp::client_multi cm(g->get<unsigned int>("smtp_server_timeout"));
+            smtp::client_multi cm(config_->general.smtp_server_timeout);
 
             for (const auto &wi: smtp_work_items)
                 cm.add(wi);
@@ -269,14 +284,17 @@ sfsistat milter_message::on_eom()
         }
     } catch (const boost::exception &e) {
         spdlog::error("{}: boost exception caught: {}", message_id_, boost::diagnostic_information(e));
-        utils::dump_email dmp("dump", "exception-", connection_id_, message_id_, headers_, body_, false);
+        utils::dump_email dmp("dump", "exception-", connection_id_, message_id_, headers_, body_, false,
+                              config_->general.dump_email_on_panic);
         return SMFIS_TEMPFAIL;
     } catch (const std::exception &e) {
         spdlog::error("{}: exception caught: {}", message_id_, e.what());
-        utils::dump_email dmp("dump", "exception-", connection_id_, message_id_, headers_, body_, false);
+        utils::dump_email dmp("dump", "exception-", connection_id_, message_id_, headers_, body_, false,
+                              config_->general.dump_email_on_panic);
         return SMFIS_TEMPFAIL;
     } catch (...) {
-        utils::dump_email dmp("dump", "exception-", connection_id_, message_id_, headers_, body_, false);
+        utils::dump_email dmp("dump", "exception-", connection_id_, message_id_, headers_, body_, false,
+                              config_->general.dump_email_on_panic);
         spdlog::debug("{}: unknown exception caught", message_id_);
         return SMFIS_TEMPFAIL;
     }
@@ -311,8 +329,7 @@ void milter_message::replace_headers(const headers_type &headers)
     }
 
     // Strip headers per configuration
-    auto strip_headers = cfg::cfg::inst().section(cfg::GENERAL_SECTION)->get<std::vector<std::string>>("strip_headers");
-    for (const auto &header: strip_headers) {
+    for (const auto &header: config_->general.strip_headers) {
         if (std::find_if(headers.begin(), headers.end(),
                          [&](const header_item &h) { return boost::iequals(h.name, header); }) == headers.end())
             continue;
@@ -404,34 +421,40 @@ void milter_message::unpack_header_value(std::string &value)
 }
 
 
-milter_message::email_context &milter_message::get_context(const std::shared_ptr<cfg::encryption_section_handler> &gs)
+milter_message::email_context &milter_message::get_context(const cfg2::BaseEncryptionSection *section)
 {
-    auto it =
-        std::find_if(contexts_.begin(), contexts_.end(), [&gs](const auto &pair) { return pair.first == gs->name(); });
+    auto it = std::find_if(contexts_.begin(), contexts_.end(),
+                           [&section](const auto &pair) { return pair.first == section->sectionName; });
 
     if (it == contexts_.end()) {
         // there's no context for the current section,
         // therefore one needs to be created
-        auto protocol = gs->get<cfg::encryption_protocol_enum>("encryption_protocol");
-
-        switch (protocol) {
-        case cfg::pgp:
+        switch (section->encryption_protocol) {
+        case cfg2::EncryptionProtocol::Pgp:
             return contexts_
-                .emplace_back(gs->name(), email_context{.body_handler = std::make_shared<pgp_body_handler>()})
+                .emplace_back(section->sectionName, email_context{.body_handler = std::make_shared<pgp_body_handler>()})
                 .second;
-        case cfg::smime:
+        case cfg2::EncryptionProtocol::Smime:
             return contexts_
-                .emplace_back(gs->name(), email_context{.body_handler = std::make_shared<smime_body_handler>()})
+                .emplace_back(section->sectionName,
+                              email_context{.body_handler = std::make_shared<smime_body_handler>()})
                 .second;
-        case cfg::pdf:
+        case cfg2::EncryptionProtocol::Pdf: {
+            assert(section->type == "pdf");
+            const auto &pdf_section = static_cast<const cfg2::PdfEncryptionSection &>(*section);
             return contexts_
-                .emplace_back(gs->name(), email_context{.body_handler = std::make_shared<pdf_body_handler>(gs)})
-                .second;
-        case cfg::none:
-            return contexts_
-                .emplace_back(gs->name(), email_context{.body_handler = std::make_shared<noop_body_handler>(gs)})
+                .emplace_back(section->sectionName,
+                              email_context{.body_handler = std::make_shared<pdf_body_handler>(pdf_section)})
                 .second;
         }
+        case cfg2::EncryptionProtocol::None:
+            return contexts_
+                .emplace_back(section->sectionName,
+                              email_context{.body_handler = std::make_shared<noop_body_handler>()})
+                .second;
+        }
+        throw std::runtime_error("Unknown encryption protocol: " +
+                                 std::string(cfg2::toString(section->encryption_protocol)));
     }
 
     return it->second;

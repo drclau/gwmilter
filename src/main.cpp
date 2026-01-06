@@ -3,6 +3,7 @@
 #include "logger/logger.hpp"
 #include "logger/spdlog_init.hpp"
 #include "milter/milter.hpp"
+#include "milter/milter_callbacks.hpp"
 #include "signal_manager.hpp"
 #include "utils/string.hpp"
 #include <boost/exception/diagnostic_information.hpp>
@@ -125,6 +126,9 @@ int main(int argc, char *argv[])
 
         // Initialize legacy configuration (for backward compatibility during migration)
         cfg::cfg::inst().init(config_file);
+
+        // Initialize milter callbacks config
+        gwmilter::callbacks::set_config(config);
 
         if (general_cfg.daemonize) {
             if (daemonize() == -1) {
