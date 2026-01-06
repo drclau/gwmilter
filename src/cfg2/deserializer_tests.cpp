@@ -64,8 +64,9 @@ TEST_F(DeserializerTest, DeserializePgpEncryptionSection)
     EXPECT_EQ(result.match.size(), 2);
     EXPECT_EQ(result.match[0], ".*@secure\\.com");
     EXPECT_EQ(result.match[1], "admin@.*");
-    EXPECT_EQ(result.encryption_protocol, "pgp");
-    EXPECT_EQ(result.key_not_found_policy, "reject");
+    EXPECT_EQ(result.encryption_protocol, EncryptionProtocol::Pgp);
+    ASSERT_TRUE(result.key_not_found_policy.has_value());
+    EXPECT_EQ(*result.key_not_found_policy, KeyNotFoundPolicy::Reject);
 }
 
 TEST_F(DeserializerTest, DeserializeSmimeEncryptionSection)
@@ -82,8 +83,9 @@ TEST_F(DeserializerTest, DeserializeSmimeEncryptionSection)
     EXPECT_EQ(result.match.size(), 2);
     EXPECT_EQ(result.match[0], ".*@secure\\.com");
     EXPECT_EQ(result.match[1], "admin@.*");
-    EXPECT_EQ(result.encryption_protocol, "smime");
-    EXPECT_EQ(result.key_not_found_policy, "reject");
+    EXPECT_EQ(result.encryption_protocol, EncryptionProtocol::Smime);
+    ASSERT_TRUE(result.key_not_found_policy.has_value());
+    EXPECT_EQ(*result.key_not_found_policy, KeyNotFoundPolicy::Reject);
 }
 
 TEST_F(DeserializerTest, DeserializePdfEncryptionSection)
@@ -101,7 +103,7 @@ TEST_F(DeserializerTest, DeserializePdfEncryptionSection)
 
     EXPECT_EQ(result.match.size(), 1);
     EXPECT_EQ(result.match[0], ".*@external\\.org");
-    EXPECT_EQ(result.encryption_protocol, "pdf");
+    EXPECT_EQ(result.encryption_protocol, EncryptionProtocol::Pdf);
     EXPECT_FLOAT_EQ(result.pdf_font_size, 14.5f);
     EXPECT_FLOAT_EQ(result.pdf_margin, 20.0f);
     EXPECT_EQ(result.pdf_attachment, "secure_email.pdf");
@@ -301,6 +303,42 @@ TEST_F(FromStringTest, StringConversion)
     EXPECT_EQ(fromString<std::string>("hello world"), "hello world");
     EXPECT_EQ(fromString<std::string>(""), "");
     EXPECT_EQ(fromString<std::string>("123"), "123");
+}
+
+TEST_F(FromStringTest, EncryptionProtocolConversion)
+{
+    EXPECT_EQ(fromString<EncryptionProtocol>("pgp"), EncryptionProtocol::Pgp);
+    EXPECT_EQ(fromString<EncryptionProtocol>("PGP"), EncryptionProtocol::Pgp);
+    EXPECT_EQ(fromString<EncryptionProtocol>("smime"), EncryptionProtocol::Smime);
+    EXPECT_EQ(fromString<EncryptionProtocol>("SmImE"), EncryptionProtocol::Smime);
+    EXPECT_EQ(fromString<EncryptionProtocol>("pdf"), EncryptionProtocol::Pdf);
+    EXPECT_EQ(fromString<EncryptionProtocol>("PDF"), EncryptionProtocol::Pdf);
+    EXPECT_EQ(fromString<EncryptionProtocol>("none"), EncryptionProtocol::None);
+    EXPECT_EQ(fromString<EncryptionProtocol>("NoNe"), EncryptionProtocol::None);
+}
+
+TEST_F(FromStringTest, EncryptionProtocolInvalidValue)
+{
+    EXPECT_THROW(static_cast<void>(fromString<EncryptionProtocol>("invalid")), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(fromString<EncryptionProtocol>("")), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(fromString<EncryptionProtocol>("pgp2")), std::invalid_argument);
+}
+
+TEST_F(FromStringTest, KeyNotFoundPolicyConversion)
+{
+    EXPECT_EQ(fromString<KeyNotFoundPolicy>("discard"), KeyNotFoundPolicy::Discard);
+    EXPECT_EQ(fromString<KeyNotFoundPolicy>("DISCARD"), KeyNotFoundPolicy::Discard);
+    EXPECT_EQ(fromString<KeyNotFoundPolicy>("retrieve"), KeyNotFoundPolicy::Retrieve);
+    EXPECT_EQ(fromString<KeyNotFoundPolicy>("ReTrIeVe"), KeyNotFoundPolicy::Retrieve);
+    EXPECT_EQ(fromString<KeyNotFoundPolicy>("reject"), KeyNotFoundPolicy::Reject);
+    EXPECT_EQ(fromString<KeyNotFoundPolicy>("REJECT"), KeyNotFoundPolicy::Reject);
+}
+
+TEST_F(FromStringTest, KeyNotFoundPolicyInvalidValue)
+{
+    EXPECT_THROW(static_cast<void>(fromString<KeyNotFoundPolicy>("invalid")), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(fromString<KeyNotFoundPolicy>("")), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(fromString<KeyNotFoundPolicy>("discard2")), std::invalid_argument);
 }
 
 class DeserializerErrorTest : public ::testing::Test {

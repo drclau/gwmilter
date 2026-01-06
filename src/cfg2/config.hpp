@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <fmt/core.h>
+#include <optional>
 #include <regex>
 #include <string_view>
 #include <type_traits>
@@ -84,7 +85,11 @@ REGISTER_STATIC_SECTION_MANDATORY(GeneralSection, "general", field("milter_socke
 
 // Encryption section types
 struct BaseEncryptionSection : BaseDynamicSection {
-    std::string encryption_protocol;
+    EncryptionProtocol encryption_protocol;
+
+    // Returns the key_not_found_policy for sections that support it (PGP/SMIME).
+    // PDF and NONE sections return nullopt because they don't use public key infrastructure.
+    [[nodiscard]] virtual std::optional<KeyNotFoundPolicy> key_not_found_policy_value() const { return std::nullopt; }
 
     void validate() const
     {
@@ -94,21 +99,23 @@ struct BaseEncryptionSection : BaseDynamicSection {
 };
 
 struct PgpEncryptionSection final : BaseEncryptionSection {
-    std::string key_not_found_policy;
+    // optional to detect missing field; validate() enforces presence.
+    std::optional<KeyNotFoundPolicy> key_not_found_policy;
+
+    [[nodiscard]] std::optional<KeyNotFoundPolicy> key_not_found_policy_value() const override
+    {
+        return key_not_found_policy;
+    }
 
     void validate() const
     {
         BaseEncryptionSection::validate();
 
-        if (encryption_protocol != "pgp")
+        if (encryption_protocol != EncryptionProtocol::Pgp)
             throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='pgp'", sectionName));
 
-        if (key_not_found_policy.empty())
+        if (!key_not_found_policy.has_value())
             throw std::invalid_argument(fmt::format("Section '{}' must define key_not_found_policy", sectionName));
-
-        if (key_not_found_policy != "discard" && key_not_found_policy != "reject" && key_not_found_policy != "retrieve")
-            throw std::invalid_argument(fmt::format(
-                "Section '{}' must set key_not_found_policy to 'discard', 'reject', or 'retrieve'", sectionName));
     }
 };
 
@@ -117,19 +124,26 @@ REGISTER_DYNAMIC_SECTION_INLINE(PgpEncryptionSection, "pgp", field("match", &Pgp
                                 field("key_not_found_policy", &PgpEncryptionSection::key_not_found_policy))
 
 struct SmimeEncryptionSection final : BaseEncryptionSection {
-    std::string key_not_found_policy;
+    // optional to detect missing field; validate() enforces presence.
+    std::optional<KeyNotFoundPolicy> key_not_found_policy;
+
+    [[nodiscard]] std::optional<KeyNotFoundPolicy> key_not_found_policy_value() const override
+    {
+        return key_not_found_policy;
+    }
 
     void validate() const
     {
         BaseEncryptionSection::validate();
 
-        if (encryption_protocol != "smime")
+        if (encryption_protocol != EncryptionProtocol::Smime)
             throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='smime'", sectionName));
 
-        if (key_not_found_policy.empty())
+        if (!key_not_found_policy.has_value())
             throw std::invalid_argument(fmt::format("Section '{}' must define key_not_found_policy", sectionName));
 
-        if (key_not_found_policy != "discard" && key_not_found_policy != "reject")
+        // SMIME specific: retrieve policy is not supported
+        if (*key_not_found_policy == KeyNotFoundPolicy::Retrieve)
             throw std::invalid_argument(fmt::format("Section '{}' must set key_not_found_policy to 'discard' or "
                                                     "'reject' (retrieve is not supported for S/MIME)",
                                                     sectionName));
@@ -153,7 +167,7 @@ struct PdfEncryptionSection final : BaseEncryptionSection {
     {
         BaseEncryptionSection::validate();
 
-        if (encryption_protocol != "pdf")
+        if (encryption_protocol != EncryptionProtocol::Pdf)
             throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='pdf'", sectionName));
 
         if (pdf_font_size <= 0.0f)
@@ -184,7 +198,7 @@ struct NoneEncryptionSection final : BaseEncryptionSection {
     {
         BaseEncryptionSection::validate();
 
-        if (encryption_protocol != "none")
+        if (encryption_protocol != EncryptionProtocol::None)
             throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='none'", sectionName));
     }
 };

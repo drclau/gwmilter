@@ -107,7 +107,8 @@ void printConfig(const Config &config)
     std::cout << "Log Type: " << config.general.log_type << "\n";
     std::cout << "Encryption Sections: " << config.encryptionSections.size() << "\n";
     for (const auto &section: config.encryptionSections)
-        std::cout << "  - [" << section->sectionName << "] protocol: " << section->encryption_protocol << "\n";
+        std::cout << "  - [" << section->sectionName << "] protocol: " << toString(section->encryption_protocol)
+                  << "\n";
     std::cout << "============================\n\n";
 }
 
@@ -121,7 +122,7 @@ void runMatchTesting(const Config &config, const std::string &label)
         auto *matchedSection = config.find_match(testValue);
         if (matchedSection) {
             std::cout << "  '" << testValue << "' -> [" << matchedSection->sectionName << "] ("
-                      << matchedSection->encryption_protocol << ")\n";
+                      << toString(matchedSection->encryption_protocol) << ")\n";
         } else {
             std::cout << "  '" << testValue << "' -> No match\n";
         }

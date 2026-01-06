@@ -1,8 +1,9 @@
 #pragma once
 
-#include <algorithm>
-#include <cctype>
+#include "enums.hpp"
+#include "utils/string.hpp"
 #include <fmt/core.h>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -78,8 +79,7 @@ template<typename T> [[nodiscard]] T fromString(const std::string &str)
 // Specialized bool conversion for user-friendly values
 template<> [[nodiscard]] inline bool fromString<bool>(const std::string &str)
 {
-    std::string lower = str;
-    std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
+    std::string lower = gwmilter::utils::string::to_lower(str);
 
     if (lower == "true" || lower == "1" || lower == "yes" || lower == "on")
         return true;
@@ -100,5 +100,10 @@ template<typename U, typename Alloc> struct is_vector<std::vector<U, Alloc>> : s
 template<typename T> struct is_variant : std::false_type { };
 
 template<typename... Types> struct is_variant<std::variant<Types...>> : std::true_type { };
+
+// Trait to detect std::optional<...>
+template<typename T> struct is_optional : std::false_type { };
+
+template<typename U> struct is_optional<std::optional<U>> : std::true_type { };
 
 } // namespace cfg2

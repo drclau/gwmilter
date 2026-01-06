@@ -1,4 +1,5 @@
 #include "config.hpp"
+#include "utils/string.hpp"
 #include <fmt/core.h>
 #include <stdexcept>
 #include <unordered_set>
@@ -31,8 +32,9 @@ template<> Config deserialize<Config>(const ConfigNode &node)
                 config.general = *generalSection;
         } else if (const ConfigNode *protocolNode = child.findChild("encryption_protocol")) {
             // This is a dynamic section
-            if (DynamicSectionRegistry::hasType(protocolNode->value)) {
-                auto section = DynamicSectionRegistry::create(protocolNode->value, child);
+            const std::string protocol = gwmilter::utils::string::to_lower(protocolNode->value);
+            if (DynamicSectionRegistry::hasType(protocol)) {
+                auto section = DynamicSectionRegistry::create(protocol, child);
                 if (dynamic_cast<BaseEncryptionSection *>(section.get())) {
                     // Cast succeeded, safe to transfer ownership
                     config.encryptionSections.emplace_back(std::unique_ptr<BaseEncryptionSection>(

@@ -65,14 +65,14 @@ signing_key = ${SIGNING_KEY_NAME}
 match = pgp-.*@example.com
 
 # Select the encryption protocol that is applied in this section.
-encryption_protocol = pgp
+encryption_protocol = PGP
 
 # Sets the policy for handling recipients who do not have a corresponding key.
 # Possible values are:
 # - discard: the recipient is silently discarded.
 # - reject: the recipient is rejected with a 5xx error.
 # - retrieve: attempt to retrieve the key from a keyserver. Reject the recipient if the key is not found.
-key_not_found_policy = retrieve
+key_not_found_policy = Retrieve
 
 [smime]
 match = user-smime@example.com
