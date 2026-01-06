@@ -171,6 +171,7 @@ if(ENABLE_CFG2)
         src/cfg2/config.cpp
         src/cfg2/ini_reader.cpp
         src/cfg2/config_manager.cpp
+        src/utils/string.cpp
     )
 
     target_include_directories(cfg2_demo PRIVATE

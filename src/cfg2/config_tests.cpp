@@ -279,6 +279,25 @@ TEST_F(ConfigTest, UnknownDynamicSectionTypeThrows)
     EXPECT_THROW({ Config config = parse<Config>(configNode); }, std::invalid_argument);
 }
 
+TEST_F(ConfigTest, DynamicSectionTypeIsCaseInsensitive)
+{
+    ConfigNode configNode{
+        "config",
+        "",
+        {{"general", "", {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE}}, NodeType::SECTION},
+         {"encrypt_pgp",
+          "",
+          {{"encryption_protocol", "PGP", {}, NodeType::VALUE},
+           {"match", ".*@example\\.com", {}, NodeType::VALUE},
+           {"key_not_found_policy", "reject", {}, NodeType::VALUE}},
+          NodeType::SECTION}},
+        NodeType::ROOT};
+
+    Config config = parse<Config>(configNode);
+    ASSERT_EQ(config.encryptionSections.size(), 1u);
+    EXPECT_EQ(config.encryptionSections[0]->encryption_protocol, EncryptionProtocol::Pgp);
+}
+
 TEST_F(ConfigTest, DynamicSectionsWithSameNameAsTypeAreHandledCorrectly)
 {
     ConfigNode configNode{
