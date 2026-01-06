@@ -87,8 +87,8 @@ REGISTER_STATIC_SECTION_MANDATORY(GeneralSection, "general", field("milter_socke
 struct BaseEncryptionSection : BaseDynamicSection {
     EncryptionProtocol encryption_protocol;
 
-    // Returns the key_not_found_policy for sections that support it (PGP/S/MIME).
-    // PDF and NOOP sections return nullopt because they don't use public key infrastructure.
+    // Returns the key_not_found_policy for sections that support it (PGP/SMIME).
+    // PDF and NONE sections return nullopt because they don't use public key infrastructure.
     [[nodiscard]] virtual std::optional<KeyNotFoundPolicy> key_not_found_policy_value() const { return std::nullopt; }
 
     void validate() const
@@ -142,7 +142,7 @@ struct SmimeEncryptionSection final : BaseEncryptionSection {
         if (!key_not_found_policy.has_value())
             throw std::invalid_argument(fmt::format("Section '{}' must define key_not_found_policy", sectionName));
 
-        // S/MIME specific: retrieve policy is not supported
+        // SMIME specific: retrieve policy is not supported
         if (*key_not_found_policy == KeyNotFoundPolicy::Retrieve)
             throw std::invalid_argument(fmt::format("Section '{}' must set key_not_found_policy to 'discard' or "
                                                     "'reject' (retrieve is not supported for S/MIME)",
