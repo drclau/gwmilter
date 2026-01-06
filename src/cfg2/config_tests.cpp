@@ -385,20 +385,20 @@ TEST_F(ConfigValidationTest, PgpSectionRejectsInvalidKeyPolicy)
 
 TEST_F(ConfigValidationTest, PgpSectionRequiresKeyPolicy)
 {
-    ConfigNode missingPolicy{"config",
-                             "",
-                             {{"general",
-                               "",
-                               {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-                                {"log_type", "console", {}, NodeType::VALUE},
-                                {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
-                               NodeType::SECTION},
-                              {"encrypt_pgp",
-                               "",
-                               {{"encryption_protocol", "pgp", {}, NodeType::VALUE},
-                                {"match", ".*@test\\.com", {}, NodeType::VALUE}},
-                               NodeType::SECTION}},
-                             NodeType::ROOT};
+    ConfigNode missingPolicy{
+        "config",
+        "",
+        {{"general",
+          "",
+          {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
+           {"log_type", "console", {}, NodeType::VALUE},
+           {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
+          NodeType::SECTION},
+         {"encrypt_pgp",
+          "",
+          {{"encryption_protocol", "pgp", {}, NodeType::VALUE}, {"match", ".*@test\\.com", {}, NodeType::VALUE}},
+          NodeType::SECTION}},
+        NodeType::ROOT};
 
     EXPECT_THROW({ Config config = parse<Config>(missingPolicy); }, std::invalid_argument);
 }
@@ -426,20 +426,20 @@ TEST_F(ConfigValidationTest, SmimeSectionRejectsRetrievePolicy)
 
 TEST_F(ConfigValidationTest, SmimeSectionRequiresKeyPolicy)
 {
-    ConfigNode missingPolicy{"config",
-                             "",
-                             {{"general",
-                               "",
-                               {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
-                                {"log_type", "console", {}, NodeType::VALUE},
-                                {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
-                               NodeType::SECTION},
-                              {"encrypt_smime",
-                               "",
-                               {{"encryption_protocol", "smime", {}, NodeType::VALUE},
-                                {"match", ".*@secure\\.com", {}, NodeType::VALUE}},
-                               NodeType::SECTION}},
-                             NodeType::ROOT};
+    ConfigNode missingPolicy{
+        "config",
+        "",
+        {{"general",
+          "",
+          {{"milter_socket", "unix:/tmp/test.sock", {}, NodeType::VALUE},
+           {"log_type", "console", {}, NodeType::VALUE},
+           {"smtp_server", "smtp://localhost", {}, NodeType::VALUE}},
+          NodeType::SECTION},
+         {"encrypt_smime",
+          "",
+          {{"encryption_protocol", "smime", {}, NodeType::VALUE}, {"match", ".*@secure\\.com", {}, NodeType::VALUE}},
+          NodeType::SECTION}},
+        NodeType::ROOT};
 
     EXPECT_THROW({ Config config = parse<Config>(missingPolicy); }, std::invalid_argument);
 }
