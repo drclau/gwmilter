@@ -99,7 +99,8 @@ struct BaseEncryptionSection : BaseDynamicSection {
 };
 
 struct PgpEncryptionSection final : BaseEncryptionSection {
-    KeyNotFoundPolicy key_not_found_policy;
+    // optional to detect missing field; validate() enforces presence.
+    std::optional<KeyNotFoundPolicy> key_not_found_policy;
 
     [[nodiscard]] std::optional<KeyNotFoundPolicy> key_not_found_policy_value() const override
     {
@@ -113,7 +114,8 @@ struct PgpEncryptionSection final : BaseEncryptionSection {
         if (encryption_protocol != EncryptionProtocol::Pgp)
             throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='pgp'", sectionName));
 
-        // key_not_found_policy validation happens at deserialization time (fromString throws on invalid values)
+        if (!key_not_found_policy.has_value())
+            throw std::invalid_argument(fmt::format("Section '{}' must define key_not_found_policy", sectionName));
     }
 };
 
@@ -122,7 +124,8 @@ REGISTER_DYNAMIC_SECTION_INLINE(PgpEncryptionSection, "pgp", field("match", &Pgp
                                 field("key_not_found_policy", &PgpEncryptionSection::key_not_found_policy))
 
 struct SmimeEncryptionSection final : BaseEncryptionSection {
-    KeyNotFoundPolicy key_not_found_policy;
+    // optional to detect missing field; validate() enforces presence.
+    std::optional<KeyNotFoundPolicy> key_not_found_policy;
 
     [[nodiscard]] std::optional<KeyNotFoundPolicy> key_not_found_policy_value() const override
     {
@@ -136,8 +139,11 @@ struct SmimeEncryptionSection final : BaseEncryptionSection {
         if (encryption_protocol != EncryptionProtocol::Smime)
             throw std::invalid_argument(fmt::format("Section '{}' must have encryption_protocol='smime'", sectionName));
 
+        if (!key_not_found_policy.has_value())
+            throw std::invalid_argument(fmt::format("Section '{}' must define key_not_found_policy", sectionName));
+
         // S/MIME specific: retrieve policy is not supported
-        if (key_not_found_policy == KeyNotFoundPolicy::Retrieve)
+        if (*key_not_found_policy == KeyNotFoundPolicy::Retrieve)
             throw std::invalid_argument(fmt::format("Section '{}' must set key_not_found_policy to 'discard' or "
                                                     "'reject' (retrieve is not supported for S/MIME)",
                                                     sectionName));

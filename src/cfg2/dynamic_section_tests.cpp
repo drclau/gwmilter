@@ -68,7 +68,8 @@ TEST_F(DynamicSectionTest, RegistryCanCreatePgpSection)
     auto *pgpSection = dynamic_cast<PgpEncryptionSection *>(section.get());
     EXPECT_NE(pgpSection, nullptr);
     EXPECT_EQ(pgpSection->encryption_protocol, EncryptionProtocol::Pgp);
-    EXPECT_EQ(pgpSection->key_not_found_policy, KeyNotFoundPolicy::Retrieve);
+    ASSERT_TRUE(pgpSection->key_not_found_policy.has_value());
+    EXPECT_EQ(*pgpSection->key_not_found_policy, KeyNotFoundPolicy::Retrieve);
     EXPECT_EQ(pgpSection->sectionName, "pgp_section");
     EXPECT_EQ(pgpSection->type, "pgp");
 }
@@ -110,7 +111,8 @@ TEST_F(DynamicSectionTest, RegistryCanCreateSmimeSection)
     auto *smimeSection = dynamic_cast<SmimeEncryptionSection *>(section.get());
     EXPECT_NE(smimeSection, nullptr);
     EXPECT_EQ(smimeSection->encryption_protocol, EncryptionProtocol::Smime);
-    EXPECT_EQ(smimeSection->key_not_found_policy, KeyNotFoundPolicy::Discard);
+    ASSERT_TRUE(smimeSection->key_not_found_policy.has_value());
+    EXPECT_EQ(*smimeSection->key_not_found_policy, KeyNotFoundPolicy::Discard);
     EXPECT_EQ(smimeSection->sectionName, "smime_section");
     EXPECT_EQ(smimeSection->type, "smime");
 }

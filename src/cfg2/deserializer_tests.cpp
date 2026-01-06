@@ -65,7 +65,8 @@ TEST_F(DeserializerTest, DeserializePgpEncryptionSection)
     EXPECT_EQ(result.match[0], ".*@secure\\.com");
     EXPECT_EQ(result.match[1], "admin@.*");
     EXPECT_EQ(result.encryption_protocol, EncryptionProtocol::Pgp);
-    EXPECT_EQ(result.key_not_found_policy, KeyNotFoundPolicy::Reject);
+    ASSERT_TRUE(result.key_not_found_policy.has_value());
+    EXPECT_EQ(*result.key_not_found_policy, KeyNotFoundPolicy::Reject);
 }
 
 TEST_F(DeserializerTest, DeserializeSmimeEncryptionSection)
@@ -83,7 +84,8 @@ TEST_F(DeserializerTest, DeserializeSmimeEncryptionSection)
     EXPECT_EQ(result.match[0], ".*@secure\\.com");
     EXPECT_EQ(result.match[1], "admin@.*");
     EXPECT_EQ(result.encryption_protocol, EncryptionProtocol::Smime);
-    EXPECT_EQ(result.key_not_found_policy, KeyNotFoundPolicy::Reject);
+    ASSERT_TRUE(result.key_not_found_policy.has_value());
+    EXPECT_EQ(*result.key_not_found_policy, KeyNotFoundPolicy::Reject);
 }
 
 TEST_F(DeserializerTest, DeserializePdfEncryptionSection)

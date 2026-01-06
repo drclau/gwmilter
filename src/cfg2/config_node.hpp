@@ -3,6 +3,7 @@
 #include "enums.hpp"
 #include "utils/string.hpp"
 #include <fmt/core.h>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -99,5 +100,10 @@ template<typename U, typename Alloc> struct is_vector<std::vector<U, Alloc>> : s
 template<typename T> struct is_variant : std::false_type { };
 
 template<typename... Types> struct is_variant<std::variant<Types...>> : std::true_type { };
+
+// Trait to detect std::optional<...>
+template<typename T> struct is_optional : std::false_type { };
+
+template<typename U> struct is_optional<std::optional<U>> : std::true_type { };
 
 } // namespace cfg2

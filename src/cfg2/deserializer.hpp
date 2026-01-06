@@ -50,7 +50,16 @@ template<typename T, typename... Fields> class Deserializer {
 
         using FieldType = std::decay_t<decltype(obj.*fieldDesc.ptr)>;
 
-        if constexpr (is_deserializable_struct<FieldType>::value) {
+        if constexpr (is_optional<FieldType>::value) {
+            using Inner = typename FieldType::value_type;
+            if constexpr (is_deserializable_struct<Inner>::value) {
+                obj.*(fieldDesc.ptr) = deserialize<Inner>(*childNode);
+            } else if constexpr (is_vector<Inner>::value) {
+                static_assert(!is_vector<Inner>::value, "std::optional<std::vector<...>> not supported");
+            } else {
+                obj.*(fieldDesc.ptr) = fromString<Inner>(childNode->value);
+            }
+        } else if constexpr (is_deserializable_struct<FieldType>::value) {
             // Nested struct
             obj.*(fieldDesc.ptr) = deserialize<FieldType>(*childNode);
         } else if constexpr (is_vector<FieldType>::value) {

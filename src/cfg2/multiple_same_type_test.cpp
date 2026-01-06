@@ -140,8 +140,10 @@ TEST_F(MultipleSameTypeTest, MultipleSectionsWithDifferentTypesAlsoWork)
     auto *pdfSection1 = dynamic_cast<PdfEncryptionSection *>(config.encryptionSections[2].get());
     auto *pdfSection2 = dynamic_cast<PdfEncryptionSection *>(config.encryptionSections[3].get());
 
-    EXPECT_EQ(pgpSection1->key_not_found_policy, KeyNotFoundPolicy::Retrieve);
-    EXPECT_EQ(pgpSection2->key_not_found_policy, KeyNotFoundPolicy::Reject);
+    ASSERT_TRUE(pgpSection1->key_not_found_policy.has_value());
+    EXPECT_EQ(*pgpSection1->key_not_found_policy, KeyNotFoundPolicy::Retrieve);
+    ASSERT_TRUE(pgpSection2->key_not_found_policy.has_value());
+    EXPECT_EQ(*pgpSection2->key_not_found_policy, KeyNotFoundPolicy::Reject);
     EXPECT_FLOAT_EQ(pdfSection1->pdf_font_size, 10.0f);
     EXPECT_FLOAT_EQ(pdfSection2->pdf_font_size, 14.0f);
 }
