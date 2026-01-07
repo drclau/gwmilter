@@ -43,7 +43,7 @@ milter::milter(const std::string &socket, unsigned long flags, int timeout, int 
     };
 
     if (smfi_register(smfilter) == MI_FAILURE)
-        throw milter_exception("smfi_setdbg failed");
+        throw milter_exception("smfi_register failed");
 }
 
 
