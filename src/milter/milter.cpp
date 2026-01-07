@@ -53,8 +53,6 @@ void milter::run()
     int rc = smfi_main();
     if (rc != MI_SUCCESS) {
         const int err = errno;
-        if (err == EADDRINUSE)
-            throw milter_exception(fmt::format("smfi_main failed for socket '{}': address already in use", socket_));
         if (err != 0) {
             throw milter_exception(
                 fmt::format("smfi_main failed for socket '{}': {}", socket_, utils::string::str_err(err)));
