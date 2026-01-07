@@ -50,15 +50,15 @@ milter::milter(const std::string &socket, unsigned long flags, int timeout, int 
 void milter::run()
 {
     errno = 0;
-    int rc = smfi_main();
-    if (rc != MI_SUCCESS) {
-        const int err = errno;
-        if (err != 0) {
-            throw milter_exception(
-                fmt::format("smfi_main failed for socket '{}': {}", socket_, utils::string::str_err(err)));
-        }
-        throw milter_exception(fmt::format("smfi_main failed for socket '{}': unknown error", socket_));
-    }
+    const int rc = smfi_main();
+    const int err = errno;
+    if (rc == MI_SUCCESS)
+        return;
+
+    if (err != 0)
+        throw milter_exception(
+            fmt::format("smfi_main failed for socket '{}': {}", socket_, utils::string::str_err(err)));
+    throw milter_exception(fmt::format("smfi_main failed for socket '{}': unknown error", socket_));
 }
 
 } // namespace gwmilter

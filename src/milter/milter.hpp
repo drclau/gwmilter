@@ -15,7 +15,7 @@ public:
     void run();
 
 private:
-    std::string socket_;
+    const std::string socket_;
 };
 
 } // namespace gwmilter
