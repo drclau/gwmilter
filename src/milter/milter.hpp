@@ -13,6 +13,9 @@ public:
     milter &operator=(const milter &) = delete;
 
     void run();
+
+private:
+    std::string socket_;
 };
 
 } // namespace gwmilter

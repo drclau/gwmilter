@@ -1,11 +1,15 @@
 #include "milter.hpp"
 #include "milter_callbacks.hpp"
 #include "milter_exception.hpp"
+#include "utils/string.hpp"
+#include <cerrno>
+#include <fmt/core.h>
 #include <libmilter/mfapi.h>
 
 namespace gwmilter {
 
 milter::milter(const std::string &socket, unsigned long flags, int timeout, int backlog, int debug_level)
+    : socket_(socket)
 {
     if (smfi_setconn(const_cast<char *>(socket.c_str())) == MI_FAILURE)
         throw milter_exception("smfi_setconn failed");
@@ -45,7 +49,18 @@ milter::milter(const std::string &socket, unsigned long flags, int timeout, int 
 
 void milter::run()
 {
-    smfi_main();
+    errno = 0;
+    int rc = smfi_main();
+    if (rc != MI_SUCCESS) {
+        const int err = errno;
+        if (err == EADDRINUSE)
+            throw milter_exception(fmt::format("smfi_main failed for socket '{}': address already in use", socket_));
+        if (err != 0) {
+            throw milter_exception(
+                fmt::format("smfi_main failed for socket '{}': {}", socket_, utils::string::str_err(err)));
+        }
+        throw milter_exception(fmt::format("smfi_main failed for socket '{}': unknown error", socket_));
+    }
 }
 
 } // namespace gwmilter
