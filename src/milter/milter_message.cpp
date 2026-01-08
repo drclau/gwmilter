@@ -442,9 +442,8 @@ milter_message::email_context &milter_message::get_context(const cfg2::BaseEncry
         case cfg2::EncryptionProtocol::Pdf: {
             // Safeguard: encryption_protocol guarantees the type, but verify at runtime
             const auto *pdf_section = dynamic_cast<const cfg2::PdfEncryptionSection *>(section);
-            if (pdf_section == nullptr) {
+            if (pdf_section == nullptr)
                 throw std::runtime_error("PDF section type mismatch for: " + section->sectionName);
-            }
             return contexts_
                 .emplace_back(section->sectionName,
                               email_context{.body_handler = std::make_shared<pdf_body_handler>(*pdf_section)})
