@@ -3,9 +3,6 @@
 
 namespace gwmilter {
 
-noop_body_handler::noop_body_handler(const std::shared_ptr<cfg::encryption_section_handler> &)
-{ }
-
 
 void noop_body_handler::write(const std::string &data)
 {
@@ -27,6 +24,9 @@ void noop_body_handler::encrypt(const std::set<std::string> &, std::string &out)
 
 bool noop_body_handler::has_public_key(const std::string &) const
 {
+    // NONE encryption is a pass-through that doesn't use public key infrastructure.
+    // Returning true ensures key_not_found_policy is never checked for NONE sections
+    // (see milter_message::on_envrcpt and BaseEncryptionSection::key_not_found_policy_value).
     return true;
 }
 

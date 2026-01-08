@@ -1,5 +1,6 @@
 #pragma once
 #include "logger/logger.hpp"
+#include "milter_callbacks.hpp"
 #include "milter_message.hpp"
 #include <cassert>
 #include <libmilter/mfapi.h>
@@ -28,7 +29,7 @@ public:
             // Normally this is only expected to happen on `xxfi_envfrom` callback,
             // but for extra safety `milter_message` is initialized whenever it is nullptr.
             spdlog::debug("{}: get_message() creating new milter_message object", connection_id_);
-            msg_ = std::make_shared<milter_message>(smfictx_, connection_id_);
+            msg_ = std::make_shared<milter_message>(smfictx_, connection_id_, callbacks::get_config());
         }
         return msg_;
     }

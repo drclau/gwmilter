@@ -1,5 +1,4 @@
 #pragma once
-#include "cfg/cfg.hpp"
 #include "headers.hpp"
 #include <crypto.hpp>
 #include <data_buffers.hpp>
@@ -8,7 +7,10 @@
 #include <mime_unpacker.hpp>
 #include <set>
 #include <string>
-#include <vector>
+
+namespace cfg2 {
+struct PdfEncryptionSection;
+}
 
 namespace gwmilter {
 
@@ -91,7 +93,7 @@ private:
 
 class pdf_body_handler final : public body_handler_base {
 public:
-    explicit pdf_body_handler(const std::shared_ptr<cfg::encryption_section_handler> &settings);
+    explicit pdf_body_handler(const cfg2::PdfEncryptionSection &settings);
 
     void write(const std::string &data) override;
     headers_type get_headers() override;
@@ -109,15 +111,21 @@ private:
 private:
     epdfcrypt::memory_mime_stream body_;
     std::string main_boundary_;
-    std::string pdf_attachment_;
 
-    std::shared_ptr<cfg::encryption_section_handler> settings_;
+    // Stored settings from cfg2
+    std::string pdf_attachment_;
+    std::string pdf_font_path_;
+    float pdf_font_size_;
+    float pdf_margin_;
+    std::string pdf_password_;
+    std::string pdf_main_page_if_missing_;
+    std::string email_body_replacement_;
 };
 
 
 class noop_body_handler final : public body_handler_base {
 public:
-    explicit noop_body_handler(const std::shared_ptr<cfg::encryption_section_handler> &);
+    noop_body_handler() = default;
 
     void write(const std::string &data) override;
     headers_type get_headers() override;

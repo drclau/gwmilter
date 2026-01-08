@@ -1,5 +1,10 @@
 #pragma once
 #include <libmilter/mfapi.h>
+#include <memory>
+
+namespace cfg2 {
+struct Config;
+} // namespace cfg2
 
 namespace gwmilter {
 
@@ -16,5 +21,10 @@ sfsistat xxfi_body(SMFICTX *ctx, unsigned char *bodyp, size_t len);
 sfsistat xxfi_eom(SMFICTX *ctx);
 sfsistat xxfi_abort(SMFICTX *ctx);
 sfsistat xxfi_close(SMFICTX *ctx);
+
+namespace callbacks {
+void set_config(std::shared_ptr<const cfg2::Config> config);
+std::shared_ptr<const cfg2::Config> get_config();
+} // namespace callbacks
 
 } // namespace gwmilter

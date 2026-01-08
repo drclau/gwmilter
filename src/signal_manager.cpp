@@ -1,6 +1,7 @@
 #include "signal_manager.hpp"
 #include "logger/logger.hpp"
 #include "logger/spdlog_init.hpp"
+#include "milter/milter_callbacks.hpp"
 #include <cassert>
 #include <libmilter/mfapi.h>
 
@@ -54,6 +55,10 @@ void SignalManager::signalLoop(sigset_t set)
                 // Reinitialize logging with new configuration
                 auto new_config = config_mgr_.getConfig();
                 assert(new_config != nullptr);
+
+                // Update milter callbacks with new config
+                callbacks::set_config(new_config);
+
                 try {
                     logging::init_spdlog(new_config->general);
                     spdlog::info("Configuration and logging reloaded successfully. NOTE: changes of milter settings "
