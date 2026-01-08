@@ -104,8 +104,6 @@ sfsistat milter_message::on_envrcpt(const std::vector<std::string> &args)
             spdlog::warn("{}: rejected recipient {} due to missing public key", message_id_, rcpt);
             return SMFIS_REJECT;
         }
-        // Empty policy means key management doesn't apply (PDF/NONE sections).
-        // This path is unreachable since their handlers always return true from has_public_key().
     }
 
     recipients_all_.emplace_back(rcpt);
