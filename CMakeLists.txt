@@ -49,8 +49,6 @@ set(GWMILTER_SOURCES
     src/main.cpp
     src/signal_manager.hpp
     src/signal_manager.cpp
-    src/cfg/cfg.hpp
-    src/cfg/cfg.cpp
     src/cfg2/section_registry.hpp
     src/cfg2/section_registry.cpp
     src/cfg2/config.hpp

@@ -1,5 +1,4 @@
 #include "milter_message.hpp"
-#include "cfg/cfg.hpp"
 #include "cfg2/config.hpp"
 #include "handlers/body_handler.hpp"
 #include "logger/logger.hpp"
