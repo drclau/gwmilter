@@ -6,6 +6,7 @@
 /build/
 /cmake-build-*/
 /.cache/
+/compile_commands.json
 
 # IDEs
 /.idea/
