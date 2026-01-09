@@ -11,6 +11,8 @@
 /.idea/
 /.vs/
 /.vscode/
+/.claude/
+/.zed/
 
 # Backup files
 *~
