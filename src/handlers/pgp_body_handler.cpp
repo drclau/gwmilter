@@ -1,7 +1,7 @@
 #include "body_handler.hpp"
 #include "logger/logger.hpp"
 #include "utils/string.hpp"
-#include <boost/algorithm/string/predicate.hpp>
+#include <algorithm>
 
 namespace gwmilter {
 
@@ -21,7 +21,7 @@ headers_type pgp_body_handler::get_headers()
     // clang-format on
 
     if (auto it = std::find_if(headers_.begin(), headers_.end(),
-                               [&h](const header_item &item) { return boost::iequals(item.name, h.name); });
+                               [&h](const header_item &item) { return utils::string::iequals(item.name, h.name); });
         it != headers_.end())
     {
         // Update the existing Content-Type header

@@ -23,7 +23,6 @@ option(WERROR "Treat warnings as errors" ON)
 # Find necessary packages
 find_package(PkgConfig REQUIRED)
 find_package(CURL REQUIRED)
-find_package(Boost 1.52.0 REQUIRED)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 
@@ -122,7 +121,6 @@ target_include_directories(gwmilter PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${CURL_INCLUDE_DIRS}
     ${MILTER_INCLUDE_DIR}
-    ${Boost_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${GMIME_INCLUDE_DIRS}
     ${EGPGCRYPT_INCLUDE_DIR}
@@ -173,7 +171,6 @@ if(ENABLE_CFG2)
 
     target_include_directories(cfg2_demo PRIVATE
         ${PROJECT_SOURCE_DIR}/src
-        ${Boost_INCLUDE_DIRS}
         ${simpleini_SOURCE_DIR}
     )
 

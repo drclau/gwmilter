@@ -5,7 +5,6 @@
 #include "milter/milter_callbacks.hpp"
 #include "signal_manager.hpp"
 #include "utils/string.hpp"
-#include <boost/exception/diagnostic_information.hpp>
 #include <cassert>
 #include <cerrno>
 #include <cstdlib>
@@ -147,8 +146,6 @@ int main(int argc, char *argv[])
 
         spdlog::info("gwmilter shutting down");
         return EXIT_SUCCESS;
-    } catch (const boost::exception &e) {
-        spdlog::error("Boost exception caught: {}", boost::diagnostic_information(e));
     } catch (const exception &e) {
         spdlog::error("Exception caught: {}", e.what());
     } catch (...) {

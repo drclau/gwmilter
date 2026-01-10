@@ -17,7 +17,6 @@ Ensure the following dependencies are installed on your system:
 *   GnuPG
 *   [libegpgcrypt](https://github.com/rzvncj/libegpgcrypt)
 *   [libepdfcrypt](https://github.com/rzvncj/libepdfcrypt)
-*   boost (property_tree, lexical_cast, algorithm/string)
 *   glib
 *   libmilter
 *   libcurl
