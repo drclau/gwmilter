@@ -23,7 +23,7 @@ option(WERROR "Treat warnings as errors" ON)
 # Find necessary packages
 find_package(PkgConfig REQUIRED)
 find_package(CURL REQUIRED)
-find_package(Boost 1.52.0 REQUIRED COMPONENTS regex)
+find_package(Boost 1.52.0 REQUIRED)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 
@@ -136,7 +136,6 @@ target_link_libraries(gwmilter PRIVATE
     CURL::libcurl
     fmt::fmt
     ${MILTER_LIBRARY}
-    Boost::regex
     PkgConfig::GLIB
     PkgConfig::GMIME
     ${EGPGCRYPT_LIBRARY}
