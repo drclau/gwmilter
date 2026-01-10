@@ -33,4 +33,12 @@ std::string to_lower(std::string_view src)
     return lower;
 }
 
+bool iequals(std::string_view a, std::string_view b)
+{
+    if (a.size() != b.size())
+        return false;
+    return std::equal(a.begin(), a.end(), b.begin(), b.end(),
+                      [](unsigned char ac, unsigned char bc) { return std::tolower(ac) == std::tolower(bc); });
+}
+
 } // namespace gwmilter::utils::string

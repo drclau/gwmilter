@@ -5,8 +5,7 @@
 #include "milter_exception.hpp"
 #include "smtp/smtp_client.hpp"
 #include "utils/dump_email.hpp"
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/exception/diagnostic_information.hpp>
+#include "utils/string.hpp"
 #include <cassert>
 #include <libmilter/mfapi.h>
 #include <memory>
@@ -279,11 +278,6 @@ sfsistat milter_message::on_eom()
                 return SMFIS_TEMPFAIL;
             }
         }
-    } catch (const boost::exception &e) {
-        spdlog::error("{}: boost exception caught: {}", message_id_, boost::diagnostic_information(e));
-        utils::dump_email dmp("dump", "exception-", connection_id_, message_id_, headers_, body_, false,
-                              config_->general.dump_email_on_panic);
-        return SMFIS_TEMPFAIL;
     } catch (const std::exception &e) {
         spdlog::error("{}: exception caught: {}", message_id_, e.what());
         utils::dump_email dmp("dump", "exception-", connection_id_, message_id_, headers_, body_, false,
@@ -328,7 +322,7 @@ void milter_message::replace_headers(const headers_type &headers)
     // Strip headers per configuration
     for (const auto &header: config_->general.strip_headers) {
         if (std::find_if(headers.begin(), headers.end(),
-                         [&](const header_item &h) { return boost::iequals(h.name, header); }) == headers.end())
+                         [&](const header_item &h) { return utils::string::iequals(h.name, header); }) == headers.end())
             continue;
         if (smfi_chgheader(smfictx_, const_cast<char *>(header.c_str()), 1, nullptr) == MI_FAILURE)
             throw milter_exception("failed to remove header " + header);

@@ -1,8 +1,8 @@
 #include "body_handler.hpp"
 #include "cfg2/config.hpp"
 #include "logger/logger.hpp"
+#include "utils/string.hpp"
 #include <algorithm>
-#include <boost/algorithm/string/predicate.hpp>
 #include <fstream>
 
 namespace gwmilter {
@@ -33,7 +33,7 @@ headers_type pdf_body_handler::get_headers()
     header_item h{"Content-Type", "multipart/mixed;\r\n\tboundary=\"" + main_boundary_ + "\"", 1, true};
 
     if (auto it = std::find_if(headers_.begin(), headers_.end(),
-                               [&h](const header_item &item) { return boost::iequals(item.name, h.name); });
+                               [&h](const header_item &item) { return utils::string::iequals(item.name, h.name); });
         it != headers_.end())
     {
         // Update the existing Content-Type header
@@ -126,7 +126,7 @@ void pdf_body_handler::preprocess()
 
     // Content-* headers are inserted at the beginning of the new body.
     for (auto &h: headers_) {
-        if (boost::iequals(h.name.substr(0, 8), "Content-")) {
+        if (utils::string::iequals(h.name.substr(0, 8), "Content-")) {
             write(h.name + ": " + h.value + "\r\n");
 
             // mark as deleted

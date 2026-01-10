@@ -1,7 +1,6 @@
 #include "body_handler.hpp"
 #include "logger/logger.hpp"
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/predicate.hpp>
+#include "utils/string.hpp"
 
 namespace gwmilter {
 
@@ -71,9 +70,9 @@ std::string body_handler_base::extract_content_headers(headers_type &content_hea
 {
     std::string content_type;
     for (auto &h: headers_) {
-        if (boost::iequals(h.name.substr(0, 8), "Content-")) {
-            if (boost::iequals(h.name, "Content-Type"))
-                content_type = boost::algorithm::to_lower_copy(h.value);
+        if (utils::string::iequals(h.name.substr(0, 8), "Content-")) {
+            if (utils::string::iequals(h.name, "Content-Type"))
+                content_type = utils::string::to_lower(h.value);
 
             header_item header{h};
             // mark as deleted
