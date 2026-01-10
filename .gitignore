@@ -6,11 +6,14 @@
 /build/
 /cmake-build-*/
 /.cache/
+/compile_commands.json
 
 # IDEs
 /.idea/
 /.vs/
 /.vscode/
+/.claude/
+/.zed/
 
 # Backup files
 *~

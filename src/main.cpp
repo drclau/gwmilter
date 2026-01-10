@@ -1,4 +1,3 @@
-#include "cfg/cfg.hpp"
 #include "cfg2/config_manager.hpp"
 #include "logger/logger.hpp"
 #include "logger/spdlog_init.hpp"
@@ -124,9 +123,6 @@ int main(int argc, char *argv[])
         // Initialize logging from cfg2
         logging::init_spdlog(general_cfg);
 
-        // Initialize legacy configuration (for backward compatibility during migration)
-        cfg::cfg::inst().init(config_file);
-
         // Initialize milter callbacks config
         gwmilter::callbacks::set_config(config);
 
@@ -151,8 +147,6 @@ int main(int argc, char *argv[])
 
         spdlog::info("gwmilter shutting down");
         return EXIT_SUCCESS;
-    } catch (const cfg::cfg_exception &e) {
-        spdlog::error("Configuration file error: {}", e.what());
     } catch (const boost::exception &e) {
         spdlog::error("Boost exception caught: {}", boost::diagnostic_information(e));
     } catch (const exception &e) {
