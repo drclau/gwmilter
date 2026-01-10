@@ -24,7 +24,12 @@ jobs:
     if: >
       github.event.issue.pull_request &&
       (contains(github.event.comment.body, '/claude review') ||
-       contains(github.event.comment.body, '@claude review'))
+       contains(github.event.comment.body, '@claude review')) &&
+      (
+        github.event.comment.author_association == 'OWNER' ||
+        github.event.comment.author_association == 'MEMBER' ||
+        github.event.comment.author_association == 'COLLABORATOR'
+      )
 
     runs-on: ubuntu-latest
     permissions:
@@ -64,4 +69,3 @@ jobs:
           # or https://code.claude.com/docs/en/cli-reference for available options
           # NOTE: Read, Grep, Glob are essential for verifying code changes during reviews
           claude_args: '--allowed-tools "Read,Grep,Glob,Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
-
