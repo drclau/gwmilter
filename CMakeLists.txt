@@ -19,6 +19,7 @@ set(THIRD_PARTY_DIR "${PROJECT_SOURCE_DIR}/third_party" CACHE PATH "Path to thir
 
 option(WERROR "Treat warnings as errors" ON)
 
+include(ExternalProject)
 
 # Find necessary packages
 find_package(PkgConfig REQUIRED)
@@ -35,13 +36,109 @@ find_path(MILTER_INCLUDE_DIR NAMES libmilter/mfapi.h)
 find_library(MILTER_LIBRARY NAMES milter)
 
 # Find paths and libraries for EGPGCRYPT and EPDFCRYPT
-set(EGPGCRYPT_PATH "/usr/local" CACHE PATH "Path to libegpgcrypt installation")
-set(EPDFCRYPT_PATH "/usr/local" CACHE PATH "Path to libepdfcrypt installation")
+set(EGPGCRYPT_PATH "" CACHE PATH "Path to libegpgcrypt installation prefix (contains include/ and lib/)")
+set(EPDFCRYPT_PATH "" CACHE PATH "Path to libepdfcrypt installation prefix (contains include/ and lib/)")
+set(EGPGCRYPT_GIT_REPOSITORY "https://github.com/drclau/libegpgcrypt" CACHE STRING "libegpgcrypt git repository")
+set(EPDFCRYPT_GIT_REPOSITORY "https://github.com/drclau/libepdfcrypt" CACHE STRING "libepdfcrypt git repository")
+set(EGPGCRYPT_GIT_TAG "HEAD" CACHE STRING "libegpgcrypt git tag/commit")
+set(EPDFCRYPT_GIT_TAG "HEAD" CACHE STRING "libepdfcrypt git tag/commit")
+set(EGPGCRYPT_CPPFLAGS "" CACHE STRING "Extra CPPFLAGS for libegpgcrypt configure (e.g. -I/usr/local/include)")
+set(EGPGCRYPT_LDFLAGS "" CACHE STRING "Extra LDFLAGS for libegpgcrypt configure (e.g. -L/usr/local/lib)")
+set(EPDFCRYPT_CPPFLAGS "" CACHE STRING "Extra CPPFLAGS for libepdfcrypt configure (e.g. -I/usr/local/include)")
+set(EPDFCRYPT_LDFLAGS "" CACHE STRING "Extra LDFLAGS for libepdfcrypt configure (e.g. -L/usr/local/lib)")
 
-find_path(EGPGCRYPT_INCLUDE_DIR NAMES crypto.hpp HINTS ${EGPGCRYPT_PATH}/include)
-find_library(EGPGCRYPT_LIBRARY NAMES egpgcrypt HINTS ${EGPGCRYPT_PATH}/lib)
-find_path(EPDFCRYPT_INCLUDE_DIR NAMES epdf.hpp HINTS ${EPDFCRYPT_PATH}/include)
-find_library(EPDFCRYPT_LIBRARY NAMES epdfcrypt HINTS ${EPDFCRYPT_PATH}/lib)
+set(USE_EGPGCRYPT_EXTERNAL OFF)
+set(USE_EPDFCRYPT_EXTERNAL OFF)
+
+if(EGPGCRYPT_PATH)
+    find_path(EGPGCRYPT_INCLUDE_DIR NAMES crypto.hpp HINTS ${EGPGCRYPT_PATH}/include)
+    find_library(EGPGCRYPT_LIBRARY NAMES egpgcrypt HINTS ${EGPGCRYPT_PATH}/lib)
+    if(NOT EGPGCRYPT_INCLUDE_DIR OR NOT EGPGCRYPT_LIBRARY)
+        message(FATAL_ERROR "EGPGCRYPT_PATH is set to '${EGPGCRYPT_PATH}', but libegpgcrypt was not found in include/ or lib/.")
+    endif()
+else()
+    set(USE_EGPGCRYPT_EXTERNAL ON)
+    file(MAKE_DIRECTORY "${THIRD_PARTY_DIR}")
+    set(EGPGCRYPT_SOURCE_DIR "${THIRD_PARTY_DIR}/libegpgcrypt")
+    set(EGPGCRYPT_INSTALL_DIR "${CMAKE_BINARY_DIR}/_deps/egpgcrypt")
+    if(EXISTS "${EGPGCRYPT_SOURCE_DIR}/configure")
+        set(EGPGCRYPT_DOWNLOAD_ARGS DOWNLOAD_COMMAND "")
+    else()
+        set(EGPGCRYPT_DOWNLOAD_ARGS
+            GIT_REPOSITORY ${EGPGCRYPT_GIT_REPOSITORY}
+            GIT_TAG ${EGPGCRYPT_GIT_TAG}
+        )
+    endif()
+
+    ExternalProject_Add(egpgcrypt_external
+        SOURCE_DIR "${EGPGCRYPT_SOURCE_DIR}"
+        ${EGPGCRYPT_DOWNLOAD_ARGS}
+        UPDATE_COMMAND ""
+        CONFIGURE_COMMAND
+            ${CMAKE_COMMAND} -E env
+            "CPPFLAGS=${EGPGCRYPT_CPPFLAGS}"
+            "LDFLAGS=${EGPGCRYPT_LDFLAGS}"
+            sh -c "[ -x ./configure ] || ./bootstrap && ./configure --prefix=${EGPGCRYPT_INSTALL_DIR}"
+        BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
+        INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
+        BUILD_IN_SOURCE 1
+    )
+
+    set(EGPGCRYPT_INCLUDE_DIR "${EGPGCRYPT_INSTALL_DIR}/include")
+    set(EGPGCRYPT_LIBRARY "${EGPGCRYPT_INSTALL_DIR}/lib/libegpgcrypt${CMAKE_SHARED_LIBRARY_SUFFIX}")
+endif()
+
+if(EPDFCRYPT_PATH)
+    find_path(EPDFCRYPT_INCLUDE_DIR NAMES epdf.hpp HINTS ${EPDFCRYPT_PATH}/include)
+    find_library(EPDFCRYPT_LIBRARY NAMES epdfcrypt HINTS ${EPDFCRYPT_PATH}/lib)
+    if(NOT EPDFCRYPT_INCLUDE_DIR OR NOT EPDFCRYPT_LIBRARY)
+        message(FATAL_ERROR "EPDFCRYPT_PATH is set to '${EPDFCRYPT_PATH}', but libepdfcrypt was not found in include/ or lib/.")
+    endif()
+else()
+    set(USE_EPDFCRYPT_EXTERNAL ON)
+    file(MAKE_DIRECTORY "${THIRD_PARTY_DIR}")
+    set(EPDFCRYPT_SOURCE_DIR "${THIRD_PARTY_DIR}/libepdfcrypt")
+    set(EPDFCRYPT_INSTALL_DIR "${CMAKE_BINARY_DIR}/_deps/epdfcrypt")
+    if(EPDFCRYPT_CPPFLAGS STREQUAL "" OR EPDFCRYPT_LDFLAGS STREQUAL "")
+        find_path(HPDF_INCLUDE_DIR NAMES hpdf.h)
+        find_library(HPDF_LIBRARY NAMES hpdf)
+        if(HPDF_INCLUDE_DIR AND EPDFCRYPT_CPPFLAGS STREQUAL "")
+            set(EPDFCRYPT_CPPFLAGS "-I${HPDF_INCLUDE_DIR}")
+        endif()
+        if(HPDF_LIBRARY AND EPDFCRYPT_LDFLAGS STREQUAL "")
+            get_filename_component(HPDF_LIBRARY_DIR "${HPDF_LIBRARY}" DIRECTORY)
+            set(EPDFCRYPT_LDFLAGS "-L${HPDF_LIBRARY_DIR}")
+        endif()
+        if(NOT HPDF_INCLUDE_DIR OR NOT HPDF_LIBRARY)
+            message(FATAL_ERROR "libharu not found. Install it or set EPDFCRYPT_CPPFLAGS/EPDFCRYPT_LDFLAGS so configure can find hpdf.h and -lhpdf.")
+        endif()
+    endif()
+    if(EXISTS "${EPDFCRYPT_SOURCE_DIR}/configure")
+        set(EPDFCRYPT_DOWNLOAD_ARGS DOWNLOAD_COMMAND "")
+    else()
+        set(EPDFCRYPT_DOWNLOAD_ARGS
+            GIT_REPOSITORY ${EPDFCRYPT_GIT_REPOSITORY}
+            GIT_TAG ${EPDFCRYPT_GIT_TAG}
+        )
+    endif()
+
+    ExternalProject_Add(epdfcrypt_external
+        SOURCE_DIR "${EPDFCRYPT_SOURCE_DIR}"
+        ${EPDFCRYPT_DOWNLOAD_ARGS}
+        UPDATE_COMMAND ""
+        CONFIGURE_COMMAND
+            ${CMAKE_COMMAND} -E env
+            "CPPFLAGS=${EPDFCRYPT_CPPFLAGS}"
+            "LDFLAGS=${EPDFCRYPT_LDFLAGS}"
+            sh -c "[ -x ./configure ] || ./bootstrap && ./configure --prefix=${EPDFCRYPT_INSTALL_DIR}"
+        BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
+        INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
+        BUILD_IN_SOURCE 1
+    )
+
+    set(EPDFCRYPT_INCLUDE_DIR "${EPDFCRYPT_INSTALL_DIR}/include")
+    set(EPDFCRYPT_LIBRARY "${EPDFCRYPT_INSTALL_DIR}/lib/libepdfcrypt${CMAKE_SHARED_LIBRARY_SUFFIX}")
+endif()
 
 # Define the executable and its source files
 set(GWMILTER_SOURCES
@@ -141,6 +238,19 @@ target_link_libraries(gwmilter PRIVATE
     spdlog::spdlog
 )
 
+set(gwmilter_build_rpath "")
+if(USE_EGPGCRYPT_EXTERNAL)
+    add_dependencies(gwmilter egpgcrypt_external)
+    list(APPEND gwmilter_build_rpath "${EGPGCRYPT_INSTALL_DIR}/lib")
+endif()
+if(USE_EPDFCRYPT_EXTERNAL)
+    add_dependencies(gwmilter epdfcrypt_external)
+    list(APPEND gwmilter_build_rpath "${EPDFCRYPT_INSTALL_DIR}/lib")
+endif()
+if(gwmilter_build_rpath)
+    set_target_properties(gwmilter PROPERTIES BUILD_RPATH "${gwmilter_build_rpath}")
+endif()
+
 # std::filesystem requires linking against a separate library on older compilers
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.1)
     target_link_libraries(gwmilter PRIVATE stdc++fs)
@@ -171,8 +281,8 @@ if(ENABLE_CFG2)
 
     target_include_directories(cfg2_demo PRIVATE
         ${PROJECT_SOURCE_DIR}/src
-        ${simpleini_SOURCE_DIR}
-    )
+    ${simpleini_SOURCE_DIR}
+)
 
     target_link_libraries(cfg2_demo
         PRIVATE
