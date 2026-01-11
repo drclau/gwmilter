@@ -15,16 +15,20 @@ Ensure the following dependencies are installed on your system:
 *   C++17 compiler
 *   cmake
 *   GnuPG
-*   [libegpgcrypt](https://github.com/rzvncj/libegpgcrypt)
-*   [libepdfcrypt](https://github.com/rzvncj/libepdfcrypt)
 *   glib
 *   libmilter
 *   libcurl
 *   spdlog
+*   fmt
 *   PkgConfig
+*   libharu (for PDF encryption support)
+
+**Automatically built dependencies:**
+*   [libegpgcrypt](https://github.com/drclau/libegpgcrypt) - git cloned and built automatically if not provided via `EGPGCRYPT_PATH`
+*   [libepdfcrypt](https://github.com/drclau/libepdfcrypt) - git cloned and built automatically if not provided via `EPDFCRYPT_PATH`
 
 > **Notes on dependencies:**
-> *   `libegpgcrypt` and `libepdfcrypt` may have to be built and installed from their sources.
+> *   `libegpgcrypt` and `libepdfcrypt` are **automatically git cloned and built** from their GitHub repositories if not already installed. You can skip the git clone by placing their sources in `third_party/libegpgcrypt` and `third_party/libepdfcrypt` for offline builds.
 > *   **macOS notes:** `libmilter` is available via [macports](https://www.macports.org). Other dependencies are either part of the base system or can be installed via [brew](https://brew.sh) or [macports](https://www.macports.org).
 
 ### b. Building the Executable
@@ -39,18 +43,20 @@ After resolving the dependencies and cloning the repository:
     cmake --build build
     ```
 
-2.  **Build with Custom Library Paths:**
+    This will automatically git clone and build `libegpgcrypt` and `libepdfcrypt` if they are not already installed.
 
-    If `libegpgcrypt` and `libepdfcrypt` are installed in non-standard locations, specify their paths during CMake configuration:
+2.  **Build with Pre-installed Libraries (Optional):**
+
+    If you have `libegpgcrypt` and `libepdfcrypt` pre-installed (to skip the automatic git clone and build), specify their installation paths:
     ```shell
     cmake -DEGPGCRYPT_PATH=/path/to/libegpgcrypt -DEPDFCRYPT_PATH=/path/to/libepdfcrypt -B build -S .
     cmake --build build
     ```
-    Replace `/path/to/libegpgcrypt` and `/path/to/libepdfcrypt` with the actual paths to the installation directories of these libraries (e.g., where their `lib/` and `include/` or `share/cmake/` directories are found).
+    Replace `/path/to/libegpgcrypt` and `/path/to/libepdfcrypt` with the actual paths to the installation directories of these libraries (e.g., where their `lib/` and `include/` directories are found).
 
 3.  **Debug Build:**
 
-    To build a debug binary:
+    To build a debug binary (automatically passes `--enable-debug` to external dependencies):
     ```shell
     cmake -DCMAKE_BUILD_TYPE=Debug -B build -S .
     cmake --build build
