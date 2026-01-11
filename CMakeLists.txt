@@ -61,6 +61,13 @@ else()
     file(MAKE_DIRECTORY "${THIRD_PARTY_DIR}")
     set(EGPGCRYPT_SOURCE_DIR "${THIRD_PARTY_DIR}/libegpgcrypt")
     set(EGPGCRYPT_INSTALL_DIR "${CMAKE_BINARY_DIR}/_deps/egpgcrypt")
+
+    # Add --enable-debug flag when building in Debug mode
+    set(EGPGCRYPT_CONFIGURE_FLAGS "--prefix=${EGPGCRYPT_INSTALL_DIR}")
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(EGPGCRYPT_CONFIGURE_FLAGS "${EGPGCRYPT_CONFIGURE_FLAGS} --enable-debug")
+    endif()
+
     if(EXISTS "${EGPGCRYPT_SOURCE_DIR}/configure")
         set(EGPGCRYPT_DOWNLOAD_ARGS DOWNLOAD_COMMAND "")
     else()
@@ -78,7 +85,7 @@ else()
             ${CMAKE_COMMAND} -E env
             "CPPFLAGS=${EGPGCRYPT_CPPFLAGS}"
             "LDFLAGS=${EGPGCRYPT_LDFLAGS}"
-            sh -c "[ -x ./configure ] || ./bootstrap && ./configure --prefix=${EGPGCRYPT_INSTALL_DIR}"
+            sh -c "test -x ./configure || ./bootstrap && ./configure ${EGPGCRYPT_CONFIGURE_FLAGS}"
         BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
         INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
         BUILD_IN_SOURCE 1
@@ -99,6 +106,13 @@ else()
     file(MAKE_DIRECTORY "${THIRD_PARTY_DIR}")
     set(EPDFCRYPT_SOURCE_DIR "${THIRD_PARTY_DIR}/libepdfcrypt")
     set(EPDFCRYPT_INSTALL_DIR "${CMAKE_BINARY_DIR}/_deps/epdfcrypt")
+
+    # Add --enable-debug flag when building in Debug mode
+    set(EPDFCRYPT_CONFIGURE_FLAGS "--prefix=${EPDFCRYPT_INSTALL_DIR}")
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(EPDFCRYPT_CONFIGURE_FLAGS "${EPDFCRYPT_CONFIGURE_FLAGS} --enable-debug")
+    endif()
+
     if(EPDFCRYPT_CPPFLAGS STREQUAL "" OR EPDFCRYPT_LDFLAGS STREQUAL "")
         find_path(HPDF_INCLUDE_DIR NAMES hpdf.h)
         find_library(HPDF_LIBRARY NAMES hpdf)
@@ -130,7 +144,7 @@ else()
             ${CMAKE_COMMAND} -E env
             "CPPFLAGS=${EPDFCRYPT_CPPFLAGS}"
             "LDFLAGS=${EPDFCRYPT_LDFLAGS}"
-            sh -c "[ -x ./configure ] || ./bootstrap && ./configure --prefix=${EPDFCRYPT_INSTALL_DIR}"
+            sh -c "test -x ./configure || ./bootstrap && ./configure ${EPDFCRYPT_CONFIGURE_FLAGS}"
         BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
         INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
         BUILD_IN_SOURCE 1
