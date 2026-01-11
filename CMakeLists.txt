@@ -35,6 +35,42 @@ pkg_check_modules(GMIME REQUIRED IMPORTED_TARGET gmime-3.0)
 find_path(MILTER_INCLUDE_DIR NAMES libmilter/mfapi.h)
 find_library(MILTER_LIBRARY NAMES milter)
 
+# Helper function to add autotools-based external projects
+function(add_autotools_external_project NAME LIBNAME GIT_REPO GIT_TAG CPPFLAGS_VAR LDFLAGS_VAR)
+    string(TOLOWER ${NAME} name_lower)
+    set(SOURCE_DIR "${THIRD_PARTY_DIR}/${LIBNAME}")
+    set(INSTALL_DIR "${CMAKE_BINARY_DIR}/_deps/${name_lower}")
+
+    set(CONFIGURE_FLAGS "--prefix=${INSTALL_DIR}")
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(CONFIGURE_FLAGS "${CONFIGURE_FLAGS} --enable-debug")
+    endif()
+
+    if(EXISTS "${SOURCE_DIR}/configure")
+        set(DOWNLOAD_ARGS DOWNLOAD_COMMAND "")
+    else()
+        set(DOWNLOAD_ARGS GIT_REPOSITORY ${GIT_REPO} GIT_TAG ${GIT_TAG})
+    endif()
+
+    ExternalProject_Add(${name_lower}_external
+        SOURCE_DIR "${SOURCE_DIR}"
+        ${DOWNLOAD_ARGS}
+        UPDATE_COMMAND ""
+        CONFIGURE_COMMAND
+            ${CMAKE_COMMAND} -E env
+            "CPPFLAGS=${${CPPFLAGS_VAR}}"
+            "LDFLAGS=${${LDFLAGS_VAR}}"
+            sh -c "test -x ./configure || ./bootstrap && ./configure ${CONFIGURE_FLAGS}"
+        BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
+        INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
+        BUILD_IN_SOURCE 1
+    )
+
+    set(${NAME}_INCLUDE_DIR "${INSTALL_DIR}/include" PARENT_SCOPE)
+    set(${NAME}_LIBRARY "${INSTALL_DIR}/lib/${LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX}" PARENT_SCOPE)
+    set(${NAME}_INSTALL_DIR "${INSTALL_DIR}" PARENT_SCOPE)
+endfunction()
+
 # Find paths and libraries for EGPGCRYPT and EPDFCRYPT
 set(EGPGCRYPT_PATH "" CACHE PATH "Path to libegpgcrypt installation prefix (contains include/ and lib/)")
 set(EPDFCRYPT_PATH "" CACHE PATH "Path to libepdfcrypt installation prefix (contains include/ and lib/)")
@@ -59,40 +95,9 @@ if(EGPGCRYPT_PATH)
 else()
     set(USE_EGPGCRYPT_EXTERNAL ON)
     file(MAKE_DIRECTORY "${THIRD_PARTY_DIR}")
-    set(EGPGCRYPT_SOURCE_DIR "${THIRD_PARTY_DIR}/libegpgcrypt")
-    set(EGPGCRYPT_INSTALL_DIR "${CMAKE_BINARY_DIR}/_deps/egpgcrypt")
-
-    # Add --enable-debug flag when building in Debug mode
-    set(EGPGCRYPT_CONFIGURE_FLAGS "--prefix=${EGPGCRYPT_INSTALL_DIR}")
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(EGPGCRYPT_CONFIGURE_FLAGS "${EGPGCRYPT_CONFIGURE_FLAGS} --enable-debug")
-    endif()
-
-    if(EXISTS "${EGPGCRYPT_SOURCE_DIR}/configure")
-        set(EGPGCRYPT_DOWNLOAD_ARGS DOWNLOAD_COMMAND "")
-    else()
-        set(EGPGCRYPT_DOWNLOAD_ARGS
-            GIT_REPOSITORY ${EGPGCRYPT_GIT_REPOSITORY}
-            GIT_TAG ${EGPGCRYPT_GIT_TAG}
-        )
-    endif()
-
-    ExternalProject_Add(egpgcrypt_external
-        SOURCE_DIR "${EGPGCRYPT_SOURCE_DIR}"
-        ${EGPGCRYPT_DOWNLOAD_ARGS}
-        UPDATE_COMMAND ""
-        CONFIGURE_COMMAND
-            ${CMAKE_COMMAND} -E env
-            "CPPFLAGS=${EGPGCRYPT_CPPFLAGS}"
-            "LDFLAGS=${EGPGCRYPT_LDFLAGS}"
-            sh -c "test -x ./configure || ./bootstrap && ./configure ${EGPGCRYPT_CONFIGURE_FLAGS}"
-        BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
-        INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
-        BUILD_IN_SOURCE 1
-    )
-
-    set(EGPGCRYPT_INCLUDE_DIR "${EGPGCRYPT_INSTALL_DIR}/include")
-    set(EGPGCRYPT_LIBRARY "${EGPGCRYPT_INSTALL_DIR}/lib/libegpgcrypt${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    add_autotools_external_project(EGPGCRYPT libegpgcrypt
+        ${EGPGCRYPT_GIT_REPOSITORY} ${EGPGCRYPT_GIT_TAG}
+        EGPGCRYPT_CPPFLAGS EGPGCRYPT_LDFLAGS)
 endif()
 
 if(EPDFCRYPT_PATH)
@@ -104,15 +109,8 @@ if(EPDFCRYPT_PATH)
 else()
     set(USE_EPDFCRYPT_EXTERNAL ON)
     file(MAKE_DIRECTORY "${THIRD_PARTY_DIR}")
-    set(EPDFCRYPT_SOURCE_DIR "${THIRD_PARTY_DIR}/libepdfcrypt")
-    set(EPDFCRYPT_INSTALL_DIR "${CMAKE_BINARY_DIR}/_deps/epdfcrypt")
 
-    # Add --enable-debug flag when building in Debug mode
-    set(EPDFCRYPT_CONFIGURE_FLAGS "--prefix=${EPDFCRYPT_INSTALL_DIR}")
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(EPDFCRYPT_CONFIGURE_FLAGS "${EPDFCRYPT_CONFIGURE_FLAGS} --enable-debug")
-    endif()
-
+    # Auto-detect libharu for epdfcrypt if flags not provided
     if(EPDFCRYPT_CPPFLAGS STREQUAL "" OR EPDFCRYPT_LDFLAGS STREQUAL "")
         find_path(HPDF_INCLUDE_DIR NAMES hpdf.h)
         find_library(HPDF_LIBRARY NAMES hpdf)
@@ -127,31 +125,10 @@ else()
             message(FATAL_ERROR "libharu not found. Install it or set EPDFCRYPT_CPPFLAGS/EPDFCRYPT_LDFLAGS so configure can find hpdf.h and -lhpdf.")
         endif()
     endif()
-    if(EXISTS "${EPDFCRYPT_SOURCE_DIR}/configure")
-        set(EPDFCRYPT_DOWNLOAD_ARGS DOWNLOAD_COMMAND "")
-    else()
-        set(EPDFCRYPT_DOWNLOAD_ARGS
-            GIT_REPOSITORY ${EPDFCRYPT_GIT_REPOSITORY}
-            GIT_TAG ${EPDFCRYPT_GIT_TAG}
-        )
-    endif()
 
-    ExternalProject_Add(epdfcrypt_external
-        SOURCE_DIR "${EPDFCRYPT_SOURCE_DIR}"
-        ${EPDFCRYPT_DOWNLOAD_ARGS}
-        UPDATE_COMMAND ""
-        CONFIGURE_COMMAND
-            ${CMAKE_COMMAND} -E env
-            "CPPFLAGS=${EPDFCRYPT_CPPFLAGS}"
-            "LDFLAGS=${EPDFCRYPT_LDFLAGS}"
-            sh -c "test -x ./configure || ./bootstrap && ./configure ${EPDFCRYPT_CONFIGURE_FLAGS}"
-        BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
-        INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
-        BUILD_IN_SOURCE 1
-    )
-
-    set(EPDFCRYPT_INCLUDE_DIR "${EPDFCRYPT_INSTALL_DIR}/include")
-    set(EPDFCRYPT_LIBRARY "${EPDFCRYPT_INSTALL_DIR}/lib/libepdfcrypt${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    add_autotools_external_project(EPDFCRYPT libepdfcrypt
+        ${EPDFCRYPT_GIT_REPOSITORY} ${EPDFCRYPT_GIT_TAG}
+        EPDFCRYPT_CPPFLAGS EPDFCRYPT_LDFLAGS)
 endif()
 
 # Define the executable and its source files
