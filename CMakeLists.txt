@@ -110,19 +110,16 @@ else()
     set(USE_EPDFCRYPT_EXTERNAL ON)
     file(MAKE_DIRECTORY "${THIRD_PARTY_DIR}")
 
-    # Auto-detect libharu for epdfcrypt if flags not provided
-    if(EPDFCRYPT_CPPFLAGS STREQUAL "" OR EPDFCRYPT_LDFLAGS STREQUAL "")
+    # Help configure find libharu on macOS Homebrew if flags not provided
+    if(APPLE AND EPDFCRYPT_CPPFLAGS STREQUAL "" AND EPDFCRYPT_LDFLAGS STREQUAL "")
         find_path(HPDF_INCLUDE_DIR NAMES hpdf.h)
         find_library(HPDF_LIBRARY NAMES hpdf)
-        if(HPDF_INCLUDE_DIR AND EPDFCRYPT_CPPFLAGS STREQUAL "")
+        if(HPDF_INCLUDE_DIR)
             set(EPDFCRYPT_CPPFLAGS "-I${HPDF_INCLUDE_DIR}")
         endif()
-        if(HPDF_LIBRARY AND EPDFCRYPT_LDFLAGS STREQUAL "")
+        if(HPDF_LIBRARY)
             get_filename_component(HPDF_LIBRARY_DIR "${HPDF_LIBRARY}" DIRECTORY)
             set(EPDFCRYPT_LDFLAGS "-L${HPDF_LIBRARY_DIR}")
-        endif()
-        if(NOT HPDF_INCLUDE_DIR OR NOT HPDF_LIBRARY)
-            message(FATAL_ERROR "libharu not found. Install it or set EPDFCRYPT_CPPFLAGS/EPDFCRYPT_LDFLAGS so configure can find hpdf.h and -lhpdf.")
         endif()
     endif()
 
