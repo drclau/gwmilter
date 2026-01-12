@@ -71,87 +71,69 @@ function(add_autotools_external_project NAME LIBNAME GIT_REPO GIT_TAG CPPFLAGS_V
     set(${NAME}_INSTALL_DIR "${INSTALL_DIR}" PARENT_SCOPE)
 endfunction()
 
-# Find paths and libraries for EGPGCRYPT and EPDFCRYPT
-option(FETCH_EXTERNAL_LIBS "Allow git cloning external libraries if not found" OFF)
-set(EGPGCRYPT_PATH "" CACHE PATH "Path to libegpgcrypt installation prefix (contains include/ and lib/)")
-set(EPDFCRYPT_PATH "" CACHE PATH "Path to libepdfcrypt installation prefix (contains include/ and lib/)")
-set(EGPGCRYPT_GIT_REPOSITORY "https://github.com/drclau/libegpgcrypt" CACHE STRING "libegpgcrypt git repository")
-set(EPDFCRYPT_GIT_REPOSITORY "https://github.com/drclau/libepdfcrypt" CACHE STRING "libepdfcrypt git repository")
-set(EGPGCRYPT_GIT_TAG "HEAD" CACHE STRING "libegpgcrypt git tag/commit")
-set(EPDFCRYPT_GIT_TAG "HEAD" CACHE STRING "libepdfcrypt git tag/commit")
-set(EGPGCRYPT_CPPFLAGS "" CACHE STRING "Extra CPPFLAGS for libegpgcrypt configure (e.g. -I/usr/local/include)")
-set(EGPGCRYPT_LDFLAGS "" CACHE STRING "Extra LDFLAGS for libegpgcrypt configure (e.g. -L/usr/local/lib)")
-set(EPDFCRYPT_CPPFLAGS "" CACHE STRING "Extra CPPFLAGS for libepdfcrypt configure (e.g. -I/usr/local/include)")
-set(EPDFCRYPT_LDFLAGS "" CACHE STRING "Extra LDFLAGS for libepdfcrypt configure (e.g. -L/usr/local/lib)")
+# Macro to set up an autotools library with pre-installed or build-from-source options
+# Sets: ${NAME}_INCLUDE_DIR, ${NAME}_LIBRARY, USE_${NAME}_EXTERNAL
+macro(setup_autotools_library NAME LIBNAME HEADER_NAME DEFAULT_GIT_REPO DEFAULT_GIT_TAG)
+    string(REGEX REPLACE "^lib" "" _lib_short_name "${LIBNAME}")
+    set(${NAME}_PATH "" CACHE PATH "Path to ${LIBNAME} installation prefix (contains include/ and lib/)")
+    set(${NAME}_GIT_REPOSITORY "${DEFAULT_GIT_REPO}" CACHE STRING "${LIBNAME} git repository")
+    set(${NAME}_GIT_TAG "${DEFAULT_GIT_TAG}" CACHE STRING "${LIBNAME} git tag/commit")
+    set(${NAME}_CPPFLAGS "" CACHE STRING "Extra CPPFLAGS for ${LIBNAME} configure")
+    set(${NAME}_LDFLAGS "" CACHE STRING "Extra LDFLAGS for ${LIBNAME} configure")
 
-set(USE_EGPGCRYPT_EXTERNAL OFF)
-set(USE_EPDFCRYPT_EXTERNAL OFF)
+    set(USE_${NAME}_EXTERNAL OFF)
 
-if(EGPGCRYPT_PATH)
-    find_path(EGPGCRYPT_INCLUDE_DIR NAMES crypto.hpp HINTS ${EGPGCRYPT_PATH}/include)
-    find_library(EGPGCRYPT_LIBRARY NAMES egpgcrypt HINTS ${EGPGCRYPT_PATH}/lib)
-    if(NOT EGPGCRYPT_INCLUDE_DIR OR NOT EGPGCRYPT_LIBRARY)
-        message(FATAL_ERROR "EGPGCRYPT_PATH is set to '${EGPGCRYPT_PATH}', but libegpgcrypt was not found in include/ or lib/.")
-    endif()
-    message(STATUS "Using pre-installed libegpgcrypt from ${EGPGCRYPT_PATH}")
-else()
-    set(USE_EGPGCRYPT_EXTERNAL ON)
-    file(MAKE_DIRECTORY "${THIRD_PARTY_DIR}")
-    set(EGPGCRYPT_SOURCE_DIR "${THIRD_PARTY_DIR}/libegpgcrypt")
-    if(EXISTS "${EGPGCRYPT_SOURCE_DIR}/configure.ac")
-        message(STATUS "Building libegpgcrypt from vendored sources in ${EGPGCRYPT_SOURCE_DIR}")
-    elseif(FETCH_EXTERNAL_LIBS)
-        message(STATUS "Building libegpgcrypt from git repository ${EGPGCRYPT_GIT_REPOSITORY} (${EGPGCRYPT_GIT_TAG})")
+    if(${NAME}_PATH)
+        find_path(${NAME}_INCLUDE_DIR NAMES ${HEADER_NAME} HINTS ${${NAME}_PATH}/include)
+        find_library(${NAME}_LIBRARY NAMES ${_lib_short_name} HINTS ${${NAME}_PATH}/lib)
+        if(NOT ${NAME}_INCLUDE_DIR OR NOT ${NAME}_LIBRARY)
+            message(FATAL_ERROR "${NAME}_PATH is set to '${${NAME}_PATH}', but ${LIBNAME} was not found in include/ or lib/.")
+        endif()
+        message(STATUS "Using pre-installed ${LIBNAME} from ${${NAME}_PATH}")
     else()
-        message(FATAL_ERROR "libegpgcrypt not found. Options:\n"
-            "  1. Install libegpgcrypt and set -DEGPGCRYPT_PATH=/path/to/installation\n"
-            "  2. Place sources in ${EGPGCRYPT_SOURCE_DIR}\n"
-            "  3. Allow git clone with -DFETCH_EXTERNAL_LIBS=ON")
+        set(USE_${NAME}_EXTERNAL ON)
+        file(MAKE_DIRECTORY "${THIRD_PARTY_DIR}")
+        set(${NAME}_SOURCE_DIR "${THIRD_PARTY_DIR}/${LIBNAME}")
+        if(EXISTS "${${NAME}_SOURCE_DIR}/configure.ac")
+            message(STATUS "Building ${LIBNAME} from vendored sources in ${${NAME}_SOURCE_DIR}")
+        elseif(FETCH_EXTERNAL_LIBS)
+            message(STATUS "Building ${LIBNAME} from git repository ${${NAME}_GIT_REPOSITORY} (${${NAME}_GIT_TAG})")
+        else()
+            message(FATAL_ERROR "${LIBNAME} not found. Options:\n"
+                "  1. Install ${LIBNAME} and set -D${NAME}_PATH=/path/to/installation\n"
+                "  2. Place sources in ${${NAME}_SOURCE_DIR}\n"
+                "  3. Allow git clone with -DFETCH_EXTERNAL_LIBS=ON")
+        endif()
+        add_autotools_external_project(${NAME} ${LIBNAME}
+            ${${NAME}_GIT_REPOSITORY} ${${NAME}_GIT_TAG}
+            ${NAME}_CPPFLAGS ${NAME}_LDFLAGS)
     endif()
-    add_autotools_external_project(EGPGCRYPT libegpgcrypt
-        ${EGPGCRYPT_GIT_REPOSITORY} ${EGPGCRYPT_GIT_TAG}
-        EGPGCRYPT_CPPFLAGS EGPGCRYPT_LDFLAGS)
-endif()
+endmacro()
 
-if(EPDFCRYPT_PATH)
-    find_path(EPDFCRYPT_INCLUDE_DIR NAMES epdf.hpp HINTS ${EPDFCRYPT_PATH}/include)
-    find_library(EPDFCRYPT_LIBRARY NAMES epdfcrypt HINTS ${EPDFCRYPT_PATH}/lib)
-    if(NOT EPDFCRYPT_INCLUDE_DIR OR NOT EPDFCRYPT_LIBRARY)
-        message(FATAL_ERROR "EPDFCRYPT_PATH is set to '${EPDFCRYPT_PATH}', but libepdfcrypt was not found in include/ or lib/.")
-    endif()
-    message(STATUS "Using pre-installed libepdfcrypt from ${EPDFCRYPT_PATH}")
-else()
-    set(USE_EPDFCRYPT_EXTERNAL ON)
-    file(MAKE_DIRECTORY "${THIRD_PARTY_DIR}")
+# External libraries: libegpgcrypt and libepdfcrypt
+option(FETCH_EXTERNAL_LIBS "Allow git cloning external libraries if not found" OFF)
 
-    # Help configure find libharu on macOS Homebrew if flags not provided
-    if(APPLE AND EPDFCRYPT_CPPFLAGS STREQUAL "" AND EPDFCRYPT_LDFLAGS STREQUAL "")
+setup_autotools_library(EGPGCRYPT libegpgcrypt crypto.hpp
+    "https://github.com/drclau/libegpgcrypt" "HEAD")
+
+# Help configure find libharu on macOS Homebrew if flags not provided before setup_autotools_library
+if(APPLE)
+    if((NOT DEFINED EPDFCRYPT_PATH OR EPDFCRYPT_PATH STREQUAL "") AND
+       (NOT DEFINED EPDFCRYPT_CPPFLAGS OR EPDFCRYPT_CPPFLAGS STREQUAL "") AND
+       (NOT DEFINED EPDFCRYPT_LDFLAGS OR EPDFCRYPT_LDFLAGS STREQUAL ""))
         find_path(HPDF_INCLUDE_DIR NAMES hpdf.h)
         find_library(HPDF_LIBRARY NAMES hpdf)
         if(HPDF_INCLUDE_DIR AND HPDF_LIBRARY)
-            set(EPDFCRYPT_CPPFLAGS "-I${HPDF_INCLUDE_DIR}")
+            set(EPDFCRYPT_CPPFLAGS "-I${HPDF_INCLUDE_DIR}" CACHE STRING "Extra CPPFLAGS for libepdfcrypt configure" FORCE)
             get_filename_component(HPDF_LIBRARY_DIR "${HPDF_LIBRARY}" DIRECTORY)
-            set(EPDFCRYPT_LDFLAGS "-L${HPDF_LIBRARY_DIR}")
+            set(EPDFCRYPT_LDFLAGS "-L${HPDF_LIBRARY_DIR}" CACHE STRING "Extra LDFLAGS for libepdfcrypt configure" FORCE)
             message(STATUS "Found libharu at ${HPDF_LIBRARY_DIR} (passing to libepdfcrypt configure)")
         endif()
     endif()
-
-    set(EPDFCRYPT_SOURCE_DIR "${THIRD_PARTY_DIR}/libepdfcrypt")
-    if(EXISTS "${EPDFCRYPT_SOURCE_DIR}/configure.ac")
-        message(STATUS "Building libepdfcrypt from vendored sources in ${EPDFCRYPT_SOURCE_DIR}")
-    elseif(FETCH_EXTERNAL_LIBS)
-        message(STATUS "Building libepdfcrypt from git repository ${EPDFCRYPT_GIT_REPOSITORY} (${EPDFCRYPT_GIT_TAG})")
-    else()
-        message(FATAL_ERROR "libepdfcrypt not found. Options:\n"
-            "  1. Install libepdfcrypt and set -DEPDFCRYPT_PATH=/path/to/installation\n"
-            "  2. Place sources in ${EPDFCRYPT_SOURCE_DIR}\n"
-            "  3. Allow git clone with -DFETCH_EXTERNAL_LIBS=ON")
-    endif()
-
-    add_autotools_external_project(EPDFCRYPT libepdfcrypt
-        ${EPDFCRYPT_GIT_REPOSITORY} ${EPDFCRYPT_GIT_TAG}
-        EPDFCRYPT_CPPFLAGS EPDFCRYPT_LDFLAGS)
 endif()
+
+setup_autotools_library(EPDFCRYPT libepdfcrypt epdf.hpp
+    "https://github.com/drclau/libepdfcrypt" "HEAD")
 
 # Define the executable and its source files
 set(GWMILTER_SOURCES

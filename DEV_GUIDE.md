@@ -26,12 +26,13 @@ Ensure the following dependencies are installed on your system:
 **Automatically built dependencies:**
 *   [libegpgcrypt](https://github.com/drclau/libegpgcrypt) - built from vendored sources or git clone (requires `-DFETCH_EXTERNAL_LIBS=ON`)
 *   [libepdfcrypt](https://github.com/drclau/libepdfcrypt) - built from vendored sources or git clone (requires `-DFETCH_EXTERNAL_LIBS=ON`)
+*   [SimpleIni](https://github.com/brofield/simpleini) - built from vendored sources or git clone (requires `-DFETCH_EXTERNAL_LIBS=ON`)
 
 > **Notes on dependencies:**
-> *   `libegpgcrypt` and `libepdfcrypt` can be provided three ways:
->     1. **Pre-installed**: Set `EGPGCRYPT_PATH`/`EPDFCRYPT_PATH` to installation directory
->     2. **Vendored sources** (offline builds): Place sources in `third_party/libegpgcrypt` and `third_party/libepdfcrypt` - no internet required
->     3. **Git clone** (requires explicit opt-in): Add `-DFETCH_EXTERNAL_LIBS=ON` to allow downloading from GitHub
+> *   `libegpgcrypt`, `libepdfcrypt`, and `SimpleIni` can be provided two ways:
+>     1. **Vendored sources** (offline builds): Place sources in `third_party/libegpgcrypt`, `third_party/libepdfcrypt`, and `third_party/simpleini` - no internet required
+>     2. **Git clone** (requires explicit opt-in): Add `-DFETCH_EXTERNAL_LIBS=ON` to allow downloading from GitHub
+> *   Additionally, `libegpgcrypt` and `libepdfcrypt` support pre-installed libraries: Set `EGPGCRYPT_PATH`/`EPDFCRYPT_PATH` to installation directory
 > *   **macOS notes:** `libmilter` is available via [macports](https://www.macports.org). Other dependencies are either part of the base system or can be installed via [brew](https://brew.sh) or [macports](https://www.macports.org).
 
 ### b. Building the Executable
