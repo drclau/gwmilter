@@ -100,7 +100,7 @@ else()
     if(EXISTS "${EGPGCRYPT_SOURCE_DIR}/configure.ac")
         message(STATUS "Building libegpgcrypt from vendored sources in ${EGPGCRYPT_SOURCE_DIR}")
     else()
-        message(STATUS "Building libegpgcrypt from git repository ${EGPGCRYPT_GIT_REPOSITORY}")
+        message(STATUS "Building libegpgcrypt from git repository ${EGPGCRYPT_GIT_REPOSITORY} (${EGPGCRYPT_GIT_TAG})")
     endif()
     add_autotools_external_project(EGPGCRYPT libegpgcrypt
         ${EGPGCRYPT_GIT_REPOSITORY} ${EGPGCRYPT_GIT_TAG}
@@ -134,7 +134,7 @@ else()
     if(EXISTS "${EPDFCRYPT_SOURCE_DIR}/configure.ac")
         message(STATUS "Building libepdfcrypt from vendored sources in ${EPDFCRYPT_SOURCE_DIR}")
     else()
-        message(STATUS "Building libepdfcrypt from git repository ${EPDFCRYPT_GIT_REPOSITORY}")
+        message(STATUS "Building libepdfcrypt from git repository ${EPDFCRYPT_GIT_REPOSITORY} (${EPDFCRYPT_GIT_TAG})")
     endif()
 
     add_autotools_external_project(EPDFCRYPT libepdfcrypt
