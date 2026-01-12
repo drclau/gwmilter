@@ -206,13 +206,12 @@ endif()
 
 # SimpleIni is required for cfg2 INI parsing.
 # Prefer a local copy; only fetch when explicitly enabled.
-option(FETCH_SIMPLEINI "Fetch SimpleIni if not available locally" OFF)
 set(SIMPLEINI_GIT_TAG "v4.25" CACHE STRING "SimpleIni git tag to fetch")
 set(simpleini_local_dir "${THIRD_PARTY_DIR}/simpleini")
 if(EXISTS "${simpleini_local_dir}/SimpleIni.h")
     set(simpleini_SOURCE_DIR "${simpleini_local_dir}")
     message(STATUS "Using vendored SimpleIni from ${simpleini_local_dir}")
-elseif(FETCH_SIMPLEINI)
+elseif(FETCH_EXTERNAL_LIBS)
     message(STATUS "Fetching SimpleIni from https://github.com/brofield/simpleini.git (${SIMPLEINI_GIT_TAG})")
     include(FetchContent)
     FetchContent_Declare(
@@ -222,7 +221,9 @@ elseif(FETCH_SIMPLEINI)
     )
     FetchContent_MakeAvailable(simpleini)
 else()
-    message(FATAL_ERROR "SimpleIni not found. Provide ${THIRD_PARTY_DIR}/simpleini or set FETCH_SIMPLEINI=ON to fetch tag ${SIMPLEINI_GIT_TAG}.")
+    message(FATAL_ERROR "SimpleIni not found. Options:\n"
+        "  1. Place sources in ${THIRD_PARTY_DIR}/simpleini\n"
+        "  2. Allow git fetch with -DFETCH_EXTERNAL_LIBS=ON")
 endif()
 
 # Toggle cfg2 module and utilities (demo/tests) on demand; default OFF while migrating
