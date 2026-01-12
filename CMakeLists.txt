@@ -43,7 +43,7 @@ function(add_autotools_external_project NAME LIBNAME GIT_REPO GIT_TAG CPPFLAGS_V
 
     set(CONFIGURE_FLAGS "--prefix=${INSTALL_DIR}")
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(CONFIGURE_FLAGS "${CONFIGURE_FLAGS} --enable-debug")
+        list(APPEND CONFIGURE_FLAGS "--enable-debug")
     endif()
 
     if(EXISTS "${SOURCE_DIR}/configure.ac")
