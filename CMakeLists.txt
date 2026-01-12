@@ -72,6 +72,7 @@ function(add_autotools_external_project NAME LIBNAME GIT_REPO GIT_TAG CPPFLAGS_V
 endfunction()
 
 # Find paths and libraries for EGPGCRYPT and EPDFCRYPT
+option(FETCH_EXTERNAL_LIBS "Allow git cloning external libraries if not found" OFF)
 set(EGPGCRYPT_PATH "" CACHE PATH "Path to libegpgcrypt installation prefix (contains include/ and lib/)")
 set(EPDFCRYPT_PATH "" CACHE PATH "Path to libepdfcrypt installation prefix (contains include/ and lib/)")
 set(EGPGCRYPT_GIT_REPOSITORY "https://github.com/drclau/libegpgcrypt" CACHE STRING "libegpgcrypt git repository")
@@ -99,8 +100,13 @@ else()
     set(EGPGCRYPT_SOURCE_DIR "${THIRD_PARTY_DIR}/libegpgcrypt")
     if(EXISTS "${EGPGCRYPT_SOURCE_DIR}/configure.ac")
         message(STATUS "Building libegpgcrypt from vendored sources in ${EGPGCRYPT_SOURCE_DIR}")
-    else()
+    elseif(FETCH_EXTERNAL_LIBS)
         message(STATUS "Building libegpgcrypt from git repository ${EGPGCRYPT_GIT_REPOSITORY} (${EGPGCRYPT_GIT_TAG})")
+    else()
+        message(FATAL_ERROR "libegpgcrypt not found. Options:\n"
+            "  1. Install libegpgcrypt and set -DEGPGCRYPT_PATH=/path/to/installation\n"
+            "  2. Place sources in ${EGPGCRYPT_SOURCE_DIR}\n"
+            "  3. Allow git clone with -DFETCH_EXTERNAL_LIBS=ON")
     endif()
     add_autotools_external_project(EGPGCRYPT libegpgcrypt
         ${EGPGCRYPT_GIT_REPOSITORY} ${EGPGCRYPT_GIT_TAG}
@@ -133,8 +139,13 @@ else()
     set(EPDFCRYPT_SOURCE_DIR "${THIRD_PARTY_DIR}/libepdfcrypt")
     if(EXISTS "${EPDFCRYPT_SOURCE_DIR}/configure.ac")
         message(STATUS "Building libepdfcrypt from vendored sources in ${EPDFCRYPT_SOURCE_DIR}")
-    else()
+    elseif(FETCH_EXTERNAL_LIBS)
         message(STATUS "Building libepdfcrypt from git repository ${EPDFCRYPT_GIT_REPOSITORY} (${EPDFCRYPT_GIT_TAG})")
+    else()
+        message(FATAL_ERROR "libepdfcrypt not found. Options:\n"
+            "  1. Install libepdfcrypt and set -DEPDFCRYPT_PATH=/path/to/installation\n"
+            "  2. Place sources in ${EPDFCRYPT_SOURCE_DIR}\n"
+            "  3. Allow git clone with -DFETCH_EXTERNAL_LIBS=ON")
     endif()
 
     add_autotools_external_project(EPDFCRYPT libepdfcrypt
