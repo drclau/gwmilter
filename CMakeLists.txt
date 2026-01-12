@@ -60,7 +60,7 @@ function(add_autotools_external_project NAME LIBNAME GIT_REPO GIT_TAG CPPFLAGS_V
             ${CMAKE_COMMAND} -E env
             "CPPFLAGS=${${CPPFLAGS_VAR}}"
             "LDFLAGS=${${LDFLAGS_VAR}}"
-            sh -c "test -x ./configure || ./bootstrap && ./configure ${CONFIGURE_FLAGS}"
+            ${CMAKE_CURRENT_SOURCE_DIR}/cmake/bootstrap-and-configure.sh ${CONFIGURE_FLAGS}
         BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
         INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
         BUILD_IN_SOURCE 1
