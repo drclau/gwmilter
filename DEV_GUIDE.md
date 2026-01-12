@@ -24,11 +24,14 @@ Ensure the following dependencies are installed on your system:
 *   libharu (for PDF encryption support)
 
 **Automatically built dependencies:**
-*   [libegpgcrypt](https://github.com/drclau/libegpgcrypt) - git cloned and built automatically if not provided via `EGPGCRYPT_PATH`
-*   [libepdfcrypt](https://github.com/drclau/libepdfcrypt) - git cloned and built automatically if not provided via `EPDFCRYPT_PATH`
+*   [libegpgcrypt](https://github.com/drclau/libegpgcrypt) - built from vendored sources or git clone (requires `-DFETCH_EXTERNAL_LIBS=ON`)
+*   [libepdfcrypt](https://github.com/drclau/libepdfcrypt) - built from vendored sources or git clone (requires `-DFETCH_EXTERNAL_LIBS=ON`)
 
 > **Notes on dependencies:**
-> *   `libegpgcrypt` and `libepdfcrypt` are **automatically git cloned and built** from their GitHub repositories if not already installed. You can skip the git clone by placing their sources in `third_party/libegpgcrypt` and `third_party/libepdfcrypt` for offline builds.
+> *   `libegpgcrypt` and `libepdfcrypt` can be provided three ways:
+>     1. **Pre-installed**: Set `EGPGCRYPT_PATH`/`EPDFCRYPT_PATH` to installation directory
+>     2. **Vendored sources** (offline builds): Place sources in `third_party/libegpgcrypt` and `third_party/libepdfcrypt` - no internet required
+>     3. **Git clone** (requires explicit opt-in): Add `-DFETCH_EXTERNAL_LIBS=ON` to allow downloading from GitHub
 > *   **macOS notes:** `libmilter` is available via [macports](https://www.macports.org). Other dependencies are either part of the base system or can be installed via [brew](https://brew.sh) or [macports](https://www.macports.org).
 
 ### b. Building the Executable
@@ -43,7 +46,11 @@ After resolving the dependencies and cloning the repository:
     cmake --build build
     ```
 
-    This will automatically git clone and build `libegpgcrypt` and `libepdfcrypt` if they are not already installed.
+    By default, CMake will look for pre-installed libraries. If not found, you'll get an error with instructions. To allow automatic git cloning and building of `libegpgcrypt` and `libepdfcrypt`:
+    ```shell
+    cmake -DFETCH_EXTERNAL_LIBS=ON -B build -S .
+    cmake --build build
+    ```
 
 2.  **Build with Pre-installed Libraries (Optional):**
 
