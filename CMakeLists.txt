@@ -211,7 +211,9 @@ set(SIMPLEINI_GIT_TAG "v4.25" CACHE STRING "SimpleIni git tag to fetch")
 set(simpleini_local_dir "${THIRD_PARTY_DIR}/simpleini")
 if(EXISTS "${simpleini_local_dir}/SimpleIni.h")
     set(simpleini_SOURCE_DIR "${simpleini_local_dir}")
+    message(STATUS "Using vendored SimpleIni from ${simpleini_local_dir}")
 elseif(FETCH_SIMPLEINI)
+    message(STATUS "Fetching SimpleIni from https://github.com/brofield/simpleini.git (${SIMPLEINI_GIT_TAG})")
     include(FetchContent)
     FetchContent_Declare(
         simpleini
