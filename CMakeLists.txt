@@ -45,6 +45,9 @@ function(add_autotools_external_project NAME LIBNAME GIT_REPO GIT_TAG CPPFLAGS_V
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         list(APPEND CONFIGURE_FLAGS "--enable-debug")
     endif()
+    list(JOIN CONFIGURE_FLAGS " " CONFIGURE_FLAGS_STR)
+    set(CONFIGURE_SCRIPT "(test -x ./configure || ./bootstrap) && exec ./configure")
+    string(APPEND CONFIGURE_SCRIPT " " "${CONFIGURE_FLAGS_STR}")
 
     if(EXISTS "${SOURCE_DIR}/configure.ac")
         set(DOWNLOAD_ARGS DOWNLOAD_COMMAND "")
@@ -60,7 +63,7 @@ function(add_autotools_external_project NAME LIBNAME GIT_REPO GIT_TAG CPPFLAGS_V
             ${CMAKE_COMMAND} -E env
             "CPPFLAGS=${${CPPFLAGS_VAR}}"
             "LDFLAGS=${${LDFLAGS_VAR}}"
-            ${CMAKE_CURRENT_SOURCE_DIR}/cmake/bootstrap-and-configure.sh ${CONFIGURE_FLAGS}
+            sh -c "${CONFIGURE_SCRIPT}"
         BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
         INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
         BUILD_IN_SOURCE 1
