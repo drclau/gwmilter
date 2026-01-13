@@ -37,32 +37,38 @@ Ensure the following dependencies are installed on your system:
 
 ### b. Building the Executable
 
-After resolving the dependencies and cloning the repository:
+After resolving the dependencies and cloning the repository, you have three options for handling external libraries (`libegpgcrypt`, `libepdfcrypt`, `SimpleIni`):
 
-1.  **Standard Build:**
+1.  **Offline Build (Default - Vendored Sources):**
 
-    Navigate to the project root and run:
+    Since this repository includes vendored sources in `third_party/`, you can build without internet access. Navigate to the project root and run:
     ```shell
     cmake -B build -S .
     cmake --build build
     ```
+    This uses the vendored `libegpgcrypt`, `libepdfcrypt`, and `SimpleIni` sources from the `third_party/` directory.
 
-    By default, CMake will look for pre-installed libraries. If not found, you'll get an error with instructions. To allow automatic git cloning and building of `libegpgcrypt` and `libepdfcrypt`:
+2.  **Build with Git Fetch (If Vendored Sources Missing):**
+
+    If vendored sources are not present in `third_party/`, allow automatic cloning from GitHub:
     ```shell
     cmake -DFETCH_EXTERNAL_LIBS=ON -B build -S .
     cmake --build build
     ```
+    This downloads the libraries from their respective GitHub repositories during the build.
 
-2.  **Build with Pre-installed Libraries (Optional):**
+3.  **Build with Pre-installed Libraries:**
 
-    If you have `libegpgcrypt` and `libepdfcrypt` pre-installed (to skip the automatic git clone and build), specify their installation paths:
+    To use system-installed `libegpgcrypt` and `libepdfcrypt` instead of building them from source, specify their installation paths:
     ```shell
     cmake -DEGPGCRYPT_PATH=/path/to/libegpgcrypt -DEPDFCRYPT_PATH=/path/to/libepdfcrypt -B build -S .
     cmake --build build
     ```
-    Replace `/path/to/libegpgcrypt` and `/path/to/libepdfcrypt` with the actual paths to the installation directories of these libraries (e.g., where their `lib/` and `include/` directories are found).
+    Replace `/path/to/libegpgcrypt` and `/path/to/libepdfcrypt` with the actual paths to the installation directories of these libraries (containing `lib/` and `include/` subdirectories).
 
-3.  **Debug Build:**
+    **Note:** `SimpleIni` is a header-only library not typically available as a system package, so it must be either vendored in `third_party/simpleini` or fetched via `-DFETCH_EXTERNAL_LIBS=ON`.
+
+4.  **Debug Build:**
 
     To build a debug binary (automatically passes `--enable-debug` to external dependencies):
     ```shell
