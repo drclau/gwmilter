@@ -29,10 +29,11 @@ Ensure the following dependencies are installed on your system:
 *   [SimpleIni](https://github.com/brofield/simpleini) - built from vendored sources or git clone (requires `-DFETCH_EXTERNAL_LIBS=ON`)
 
 > **Notes on dependencies:**
-> *   `libegpgcrypt`, `libepdfcrypt`, and `SimpleIni` can be provided two ways:
+> *   **Important:** `libegpgcrypt`, `libepdfcrypt`, and `SimpleIni` are not available as packages on any platform. They must be built from source.
+> *   These three libraries can be provided two ways:
 >     1. **Vendored sources** (offline builds): Place sources in `third_party/libegpgcrypt`, `third_party/libepdfcrypt`, and `third_party/simpleini` - no internet required
 >     2. **Git clone** (requires explicit opt-in): Add `-DFETCH_EXTERNAL_LIBS=ON` to allow downloading from GitHub
-> *   Additionally, `libegpgcrypt` and `libepdfcrypt` support pre-installed libraries: Set `EGPGCRYPT_PATH`/`EPDFCRYPT_PATH` to installation directory
+> *   Additionally, `libegpgcrypt` and `libepdfcrypt` support pre-installed libraries if you've built and installed them yourself: Set `EGPGCRYPT_PATH`/`EPDFCRYPT_PATH` to installation directory
 > *   **macOS notes:** `libmilter` is available via [macports](https://www.macports.org). Other dependencies are either part of the base system or can be installed via [brew](https://brew.sh) or [macports](https://www.macports.org).
 
 ### b. Building the Executable
