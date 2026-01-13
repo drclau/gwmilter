@@ -15,42 +15,63 @@ Ensure the following dependencies are installed on your system:
 *   C++17 compiler
 *   cmake
 *   GnuPG
-*   [libegpgcrypt](https://github.com/rzvncj/libegpgcrypt)
-*   [libepdfcrypt](https://github.com/rzvncj/libepdfcrypt)
 *   glib
 *   libmilter
 *   libcurl
 *   spdlog
+*   fmt
 *   PkgConfig
+*   libharu (for PDF encryption support)
+
+**Automatically built dependencies:**
+*   [libegpgcrypt](https://github.com/drclau/libegpgcrypt) - built from vendored sources or git clone (requires `-DFETCH_EXTERNAL_LIBS=ON`)
+*   [libepdfcrypt](https://github.com/drclau/libepdfcrypt) - built from vendored sources or git clone (requires `-DFETCH_EXTERNAL_LIBS=ON`)
+*   [SimpleIni](https://github.com/brofield/simpleini) - built from vendored sources or git clone (requires `-DFETCH_EXTERNAL_LIBS=ON`)
 
 > **Notes on dependencies:**
-> *   `libegpgcrypt` and `libepdfcrypt` may have to be built and installed from their sources.
+> *   **Important:** `libegpgcrypt`, `libepdfcrypt`, and `SimpleIni` are not available as packages on any platform. They must be built from source.
+> *   These three libraries can be provided two ways:
+>     1. **Vendored sources** (offline builds): Place sources in `third_party/libegpgcrypt`, `third_party/libepdfcrypt`, and `third_party/simpleini` - no internet required
+>     2. **Git clone** (requires explicit opt-in): Add `-DFETCH_EXTERNAL_LIBS=ON` to allow downloading from GitHub
+> *   Additionally, `libegpgcrypt` and `libepdfcrypt` support pre-installed libraries if you've built and installed them yourself: Set `EGPGCRYPT_PATH`/`EPDFCRYPT_PATH` to installation directory
 > *   **macOS notes:** `libmilter` is available via [macports](https://www.macports.org). Other dependencies are either part of the base system or can be installed via [brew](https://brew.sh) or [macports](https://www.macports.org).
 
 ### b. Building the Executable
 
-After resolving the dependencies and cloning the repository:
+After resolving the dependencies and cloning the repository, you have three options for handling external libraries (`libegpgcrypt`, `libepdfcrypt`, `SimpleIni`):
 
-1.  **Standard Build:**
+1.  **Offline Build (Default - Vendored Sources):**
 
-    Navigate to the project root and run:
+    Since this repository includes vendored sources in `third_party/`, you can build without internet access. Navigate to the project root and run:
     ```shell
     cmake -B build -S .
     cmake --build build
     ```
+    This uses the vendored `libegpgcrypt`, `libepdfcrypt`, and `SimpleIni` sources from the `third_party/` directory.
 
-2.  **Build with Custom Library Paths:**
+2.  **Build with Git Fetch (If Vendored Sources Missing):**
 
-    If `libegpgcrypt` and `libepdfcrypt` are installed in non-standard locations, specify their paths during CMake configuration:
+    If vendored sources are not present in `third_party/`, allow automatic cloning from GitHub:
+    ```shell
+    cmake -DFETCH_EXTERNAL_LIBS=ON -B build -S .
+    cmake --build build
+    ```
+    This downloads the libraries from their respective GitHub repositories during the build.
+
+3.  **Build with Pre-installed Libraries:**
+
+    To use system-installed `libegpgcrypt` and `libepdfcrypt` instead of building them from source, specify their installation paths:
     ```shell
     cmake -DEGPGCRYPT_PATH=/path/to/libegpgcrypt -DEPDFCRYPT_PATH=/path/to/libepdfcrypt -B build -S .
     cmake --build build
     ```
-    Replace `/path/to/libegpgcrypt` and `/path/to/libepdfcrypt` with the actual paths to the installation directories of these libraries (e.g., where their `lib/` and `include/` or `share/cmake/` directories are found).
+    Replace `/path/to/libegpgcrypt` and `/path/to/libepdfcrypt` with the actual paths to the installation directories of these libraries (containing `lib/` and `include/` subdirectories).
 
-3.  **Debug Build:**
+    **Note:** `SimpleIni` is a header-only library not typically available as a system package, so it must be either vendored in `third_party/simpleini` or fetched via `-DFETCH_EXTERNAL_LIBS=ON`.
 
-    To build a debug binary:
+4.  **Debug Build:**
+
+    To build a debug binary (automatically passes `--enable-debug` to external dependencies):
     ```shell
     cmake -DCMAKE_BUILD_TYPE=Debug -B build -S .
     cmake --build build
