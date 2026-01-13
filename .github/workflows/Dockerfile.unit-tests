@@ -1,0 +1,104 @@
+ARG ALPINE_VERSION=3.22
+ARG LIBEGPGCRYPT_COMMIT=49360bf5a07d9aec35f1cf311e9d14f73e01b5b0
+ARG LIBEPDFCRYPT_COMMIT=2eacdca2838a67aaada39241d2fda0136a28e2c2
+ARG SIMPLEINI_VERSION=v4.25
+
+# Stage 1: Build dependencies and unit tests
+FROM alpine:${ALPINE_VERSION} AS builder
+
+# Install build dependencies (matching production Dockerfile)
+RUN apk add --no-cache \
+    'build-base~0.5' \
+    'glib-dev~2.84' \
+    'openssl-dev~3.5' \
+    'boost-dev~1.84' \
+    'curl-dev~8.14' \
+    'fmt-dev~11.2' \
+    'gmime-dev~3.2' \
+    'gpgme-dev~1.24' \
+    'libharu-dev~2.4' \
+    'libmilter-dev~1.0' \
+    'spdlog-dev~1.15' \
+    'gtest-dev~1.16' \
+    pkgconf \
+    autoconf \
+    autoconf-archive \
+    automake \
+    libtool \
+    make \
+    cmake \
+    git
+
+# Build and install libegpgcrypt
+RUN git clone --depth 1 https://github.com/rzvncj/libegpgcrypt.git /deps/libegpgcrypt && \
+    cd /deps/libegpgcrypt && \
+    git fetch --depth 1 origin ${LIBEGPGCRYPT_COMMIT} && \
+    git checkout ${LIBEGPGCRYPT_COMMIT} && \
+    ./bootstrap && \
+    ./configure && \
+    make -j$(nproc) && \
+    make install
+
+# Build and install libepdfcrypt
+RUN git clone --depth 1 https://github.com/rzvncj/libepdfcrypt.git /deps/libepdfcrypt && \
+    cd /deps/libepdfcrypt && \
+    git fetch --depth 1 origin ${LIBEPDFCRYPT_COMMIT} && \
+    git checkout ${LIBEPDFCRYPT_COMMIT} && \
+    ./bootstrap && \
+    ./configure && \
+    make -j$(nproc) && \
+    make install
+
+# Clone SimpleIni for vendored build (CMake will auto-detect in third_party/)
+RUN git clone --depth 1 https://github.com/brofield/simpleini.git /app/third_party/simpleini && \
+    cd /app/third_party/simpleini && \
+    git fetch --depth 1 origin ${SIMPLEINI_VERSION} && \
+    git checkout ${SIMPLEINI_VERSION}
+
+WORKDIR /app
+
+# Copy the source code
+COPY CMakeLists.txt /app/
+COPY src/ /app/src/
+
+# Build unit tests
+RUN cmake \
+    -DBUILD_TESTING=ON \
+    -DENABLE_CFG2=ON \
+    -DEGPGCRYPT_PATH=/usr/local \
+    -DEPDFCRYPT_PATH=/usr/local \
+    -DWERROR=ON \
+    -DCMAKE_BUILD_TYPE=Release \
+    -B build \
+    -S . && \
+    cmake --build build --target cfg2_tests -- -j$(nproc)
+
+# Stage 2: Test runner (minimal runtime environment)
+FROM alpine:${ALPINE_VERSION} AS test-runner
+
+# Install runtime dependencies for tests
+RUN apk add --no-cache \
+    'glib~2.84' \
+    'libstdc++~14.2' \
+    'fmt~11.2' \
+    'spdlog~1.15' \
+    'gtest~1.16' \
+    'cmake~3.31'
+
+# Copy built libraries from builder stage
+COPY --from=builder /usr/local/lib/libegpgcrypt.so* /usr/local/lib/
+COPY --from=builder /usr/local/lib/libepdfcrypt.so* /usr/local/lib/
+
+# Copy the entire build directory (includes CTestTestfile.cmake and test executables)
+COPY --from=builder /app/build /app/build
+
+# Copy source directory (needed for testdata files referenced by tests)
+COPY --from=builder /app/src /app/src
+
+# Set library path
+ENV LD_LIBRARY_PATH=/usr/local/lib
+
+WORKDIR /app
+
+# Run tests via CTest with verbose output and JUnit XML reporting
+CMD ["ctest", "--test-dir", "/app/build", "--verbose", "--output-junit", "/test-results/test-results.xml"]
