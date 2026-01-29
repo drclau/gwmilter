@@ -322,6 +322,8 @@ if(BUILD_TESTING)
         PkgConfig::GMIME
     )
 
+    target_compile_definitions(gwmilter_tests PRIVATE UNIT_TESTING)
+
     set_target_properties(gwmilter_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON

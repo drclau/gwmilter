@@ -2,55 +2,44 @@
 #include <cctype>
 #include <gtest/gtest.h>
 
-using namespace gwmilter;
+namespace gwmilter {
 
-// Helper class to expose protected methods for testing
-class TestableBodyHandler : public body_handler_base {
+// Minimal concrete subclass — only satisfies pure virtuals, no public forwarders.
+// Protected method access is granted via FRIEND_TEST in body_handler.hpp.
+class StubBodyHandler : public body_handler_base {
 public:
     headers_type get_headers() override { return headers_; }
     void encrypt(const recipients_type &, std::string &) override { }
     bool has_public_key(const std::string &) const override { return true; }
     bool import_public_key(const std::string &) override { return true; }
-
-    // Expose protected methods
-    static std::string public_generate_boundary(std::size_t length = 70) { return generate_boundary(length); }
-
-    std::string public_extract_content_headers(headers_type &content_headers)
-    {
-        return extract_content_headers(content_headers);
-    }
-};
-
-// Test body_handler_base protected methods via helper subclass
-class BodyHandlerBaseTest : public ::testing::Test {
-protected:
-    TestableBodyHandler handler;
-
-    void SetUp() override { }
-    void TearDown() override { }
 };
 
 // ============================================
 // generate_boundary tests
 // ============================================
 
+class BodyHandlerBaseTest : public ::testing::Test {
+protected:
+    StubBodyHandler handler;
+};
+
 TEST_F(BodyHandlerBaseTest, GenerateBoundaryReturnsCorrectLength)
 {
     // Test default length (70)
-    std::string boundary = TestableBodyHandler::public_generate_boundary();
+    std::string boundary = body_handler_base::generate_boundary();
     EXPECT_EQ(boundary.length(), 70);
 
     // Test custom lengths
-    std::string short_boundary = TestableBodyHandler::public_generate_boundary(10);
+    std::string short_boundary = body_handler_base::generate_boundary(10);
     EXPECT_EQ(short_boundary.length(), 10);
 
-    std::string long_boundary = TestableBodyHandler::public_generate_boundary(100);
+    std::string long_boundary = body_handler_base::generate_boundary(100);
     EXPECT_EQ(long_boundary.length(), 100);
 }
 
 TEST_F(BodyHandlerBaseTest, GenerateBoundaryContainsOnlyValidChars)
 {
-    std::string boundary = TestableBodyHandler::public_generate_boundary(100);
+    std::string boundary = body_handler_base::generate_boundary(100);
 
     // RFC 2046 allows alphanumeric characters for boundaries
     for (char c: boundary)
@@ -105,10 +94,7 @@ TEST_F(BodyHandlerBaseTest, AddHeaderTracksIndexPerName)
 
 class ExtractContentHeadersTest : public ::testing::Test {
 protected:
-    TestableBodyHandler handler;
-
-    void SetUp() override { }
-    void TearDown() override { }
+    StubBodyHandler handler;
 };
 
 TEST_F(ExtractContentHeadersTest, ExtractContentHeadersFindsContentType)
@@ -118,7 +104,7 @@ TEST_F(ExtractContentHeadersTest, ExtractContentHeadersFindsContentType)
     handler.add_header("Content-Transfer-Encoding", "quoted-printable");
 
     headers_type content_headers;
-    std::string content_type = handler.public_extract_content_headers(content_headers);
+    std::string content_type = handler.extract_content_headers(content_headers);
 
     // Should return Content-Type value in lowercase
     EXPECT_EQ(content_type, "text/html; charset=utf-8");
@@ -136,7 +122,7 @@ TEST_F(ExtractContentHeadersTest, ExtractContentHeadersCaseInsensitive)
     handler.add_header("Content-Disposition", "attachment");
 
     headers_type content_headers;
-    std::string content_type = handler.public_extract_content_headers(content_headers);
+    std::string content_type = handler.extract_content_headers(content_headers);
 
     EXPECT_EQ(content_type, "text/plain");
     EXPECT_EQ(content_headers.size(), 3);
@@ -148,7 +134,7 @@ TEST_F(ExtractContentHeadersTest, ExtractContentHeadersMarksAsModified)
     handler.add_header("X-Custom", "value");
 
     headers_type content_headers;
-    handler.public_extract_content_headers(content_headers);
+    handler.extract_content_headers(content_headers);
 
     // Get all headers and check modification status
     headers_type all_headers = handler.get_headers();
@@ -168,8 +154,10 @@ TEST_F(ExtractContentHeadersTest, ExtractContentHeadersHandlesNoContentHeaders)
     handler.add_header("Received", "from somewhere");
 
     headers_type content_headers;
-    std::string content_type = handler.public_extract_content_headers(content_headers);
+    std::string content_type = handler.extract_content_headers(content_headers);
 
     EXPECT_TRUE(content_type.empty());
     EXPECT_TRUE(content_headers.empty());
 }
+
+} // namespace gwmilter

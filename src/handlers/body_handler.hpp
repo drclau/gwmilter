@@ -8,6 +8,10 @@
 #include <set>
 #include <string>
 
+#ifdef UNIT_TESTING
+#include <gtest/gtest_prod.h>
+#endif
+
 namespace cfg2 {
 struct PdfEncryptionSection;
 }
@@ -33,6 +37,15 @@ public:
     const std::set<std::string> &failed_recipients() { return expired_keys_; }
 
 protected:
+#ifdef UNIT_TESTING
+    FRIEND_TEST(BodyHandlerBaseTest, GenerateBoundaryReturnsCorrectLength);
+    FRIEND_TEST(BodyHandlerBaseTest, GenerateBoundaryContainsOnlyValidChars);
+    FRIEND_TEST(ExtractContentHeadersTest, ExtractContentHeadersFindsContentType);
+    FRIEND_TEST(ExtractContentHeadersTest, ExtractContentHeadersCaseInsensitive);
+    FRIEND_TEST(ExtractContentHeadersTest, ExtractContentHeadersMarksAsModified);
+    FRIEND_TEST(ExtractContentHeadersTest, ExtractContentHeadersHandlesNoContentHeaders);
+#endif
+
     static std::string generate_boundary(std::size_t length = 70);
 
     // returns value of Content-Type and fills the param with all
