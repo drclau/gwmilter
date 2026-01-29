@@ -62,16 +62,17 @@ COPY CMakeLists.txt /app/
 COPY src/ /app/src/
 
 # Build unit tests
+# Note: gwmilter_tests is a unified test suite containing all unit tests
+# (utils, handlers, cfg2 module). Previously split into gwmilter_tests and cfg2_tests.
 RUN cmake \
     -DBUILD_TESTING=ON \
-    -DENABLE_CFG2=ON \
     -DEGPGCRYPT_PATH=/usr/local \
     -DEPDFCRYPT_PATH=/usr/local \
     -DWERROR=ON \
     -DCMAKE_BUILD_TYPE=Release \
     -B build \
     -S . && \
-    cmake --build build --target cfg2_tests -- -j$(nproc)
+    cmake --build build --target gwmilter_tests -- -j$(nproc)
 
 # Stage 2: Test runner (minimal runtime environment)
 FROM alpine:${ALPINE_VERSION} AS test-runner
