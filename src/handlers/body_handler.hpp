@@ -8,6 +8,10 @@
 #include <set>
 #include <string>
 
+#ifdef GWMILTER_TESTING
+#include <gtest/gtest_prod.h>
+#endif
+
 namespace cfg2 {
 struct PdfEncryptionSection;
 }
@@ -17,6 +21,15 @@ namespace gwmilter {
 using recipients_type = std::set<std::string>;
 
 class body_handler_base {
+#ifdef GWMILTER_TESTING
+    FRIEND_TEST(BodyHandlerBaseTest, GenerateBoundaryReturnsCorrectLength);
+    FRIEND_TEST(BodyHandlerBaseTest, GenerateBoundaryContainsOnlyValidChars);
+    FRIEND_TEST(ExtractContentHeadersTest, ExtractContentHeadersFindsContentType);
+    FRIEND_TEST(ExtractContentHeadersTest, ExtractContentHeadersCaseInsensitive);
+    FRIEND_TEST(ExtractContentHeadersTest, ExtractContentHeadersMarksAsModified);
+    FRIEND_TEST(ExtractContentHeadersTest, ExtractContentHeadersHandlesNoContentHeaders);
+#endif
+
 public:
     body_handler_base();
     virtual ~body_handler_base() = default;
