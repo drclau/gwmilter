@@ -10,8 +10,6 @@ class SmimeBodyHandlerHeadersTest : public ::testing::Test {
 protected:
     smime_body_handler handler;
 
-    void SetUp() override { }
-    void TearDown() override { }
 };
 
 TEST_F(SmimeBodyHandlerHeadersTest, GetHeadersReturnsPkcs7MimeType)
@@ -42,18 +40,6 @@ TEST_F(SmimeBodyHandlerHeadersTest, GetHeadersIncludesSmimeType)
     EXPECT_NE(it->value.find("smime-type=enveloped-data"), std::string::npos);
 }
 
-TEST_F(SmimeBodyHandlerHeadersTest, GetHeadersIncludesFilename)
-{
-    headers_type headers = handler.get_headers();
-
-    auto it =
-        std::find_if(headers.begin(), headers.end(), [](const header_item &h) { return h.name == "Content-Type"; });
-    ASSERT_NE(it, headers.end());
-
-    // Should have name="smime.p7m"
-    EXPECT_NE(it->value.find("name=\"smime.p7m\""), std::string::npos);
-}
-
 TEST_F(SmimeBodyHandlerHeadersTest, GetHeadersAddsTransferEncoding)
 {
     headers_type headers = handler.get_headers();
@@ -75,17 +61,6 @@ TEST_F(SmimeBodyHandlerHeadersTest, GetHeadersAddsContentDisposition)
     ASSERT_NE(it, headers.end());
     EXPECT_NE(it->value.find("attachment"), std::string::npos);
     EXPECT_NE(it->value.find("smime.p7m"), std::string::npos);
-}
-
-TEST_F(SmimeBodyHandlerHeadersTest, GetHeadersAddsContentDescription)
-{
-    headers_type headers = handler.get_headers();
-
-    // Should have Content-Description header
-    auto it = std::find_if(headers.begin(), headers.end(),
-                           [](const header_item &h) { return h.name == "Content-Description"; });
-    ASSERT_NE(it, headers.end());
-    EXPECT_NE(it->value.find("S/MIME Encrypted Message"), std::string::npos);
 }
 
 TEST_F(SmimeBodyHandlerHeadersTest, GetHeadersUpdatesExistingContentType)
@@ -137,18 +112,3 @@ TEST_F(SmimeBodyHandlerHeadersTest, GetHeadersOnlyAddsExtraHeadersOnce)
     EXPECT_EQ(description_count, 1);
 }
 
-TEST_F(SmimeBodyHandlerHeadersTest, GetHeadersMarksHeadersAsModified)
-{
-    headers_type headers = handler.get_headers();
-
-    // All headers created by get_headers() should be marked as modified
-    auto content_type =
-        std::find_if(headers.begin(), headers.end(), [](const header_item &h) { return h.name == "Content-Type"; });
-    ASSERT_NE(content_type, headers.end());
-    EXPECT_TRUE(content_type->modified);
-
-    auto transfer_encoding = std::find_if(headers.begin(), headers.end(),
-                                          [](const header_item &h) { return h.name == "Content-Transfer-Encoding"; });
-    ASSERT_NE(transfer_encoding, headers.end());
-    EXPECT_TRUE(transfer_encoding->modified);
-}

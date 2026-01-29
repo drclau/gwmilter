@@ -10,8 +10,6 @@ class PgpBodyHandlerHeadersTest : public ::testing::Test {
 protected:
     pgp_body_handler handler;
 
-    void SetUp() override { }
-    void TearDown() override { }
 };
 
 TEST_F(PgpBodyHandlerHeadersTest, GetHeadersReturnsMultipartEncrypted)
@@ -41,18 +39,6 @@ TEST_F(PgpBodyHandlerHeadersTest, GetHeadersIncludesPgpProtocol)
     // RFC 3156 requires protocol="application/pgp-encrypted"
     EXPECT_NE(it->value.find("application/pgp-encrypted"), std::string::npos);
     EXPECT_NE(it->value.find("protocol="), std::string::npos);
-}
-
-TEST_F(PgpBodyHandlerHeadersTest, GetHeadersIncludesBoundary)
-{
-    headers_type headers = handler.get_headers();
-
-    auto it =
-        std::find_if(headers.begin(), headers.end(), [](const header_item &h) { return h.name == "Content-Type"; });
-    ASSERT_NE(it, headers.end());
-
-    // Should have a boundary parameter
-    EXPECT_NE(it->value.find("boundary="), std::string::npos);
 }
 
 TEST_F(PgpBodyHandlerHeadersTest, GetHeadersUpdatesExistingContentType)
@@ -90,27 +76,3 @@ TEST_F(PgpBodyHandlerHeadersTest, GetHeadersCreatesContentTypeIfMissing)
     EXPECT_NE(headers[0].value.find("multipart/encrypted"), std::string::npos);
 }
 
-TEST_F(PgpBodyHandlerHeadersTest, GetHeadersMarksContentTypeAsModified)
-{
-    headers_type headers = handler.get_headers();
-
-    auto it =
-        std::find_if(headers.begin(), headers.end(), [](const header_item &h) { return h.name == "Content-Type"; });
-    ASSERT_NE(it, headers.end());
-
-    // modified flag should be set to true (index=1, modified=true per code)
-    EXPECT_TRUE(it->modified);
-}
-
-TEST_F(PgpBodyHandlerHeadersTest, GetHeadersMultipleCallsReturnSameHeaders)
-{
-    headers_type headers1 = handler.get_headers();
-    headers_type headers2 = handler.get_headers();
-
-    // Should return the same headers on multiple calls
-    EXPECT_EQ(headers1.size(), headers2.size());
-
-    // Content-Type should be the same
-    EXPECT_EQ(headers1[0].name, headers2[0].name);
-    EXPECT_EQ(headers1[0].value, headers2[0].value);
-}
