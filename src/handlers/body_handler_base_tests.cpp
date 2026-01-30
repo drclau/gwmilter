@@ -35,6 +35,10 @@ TEST_F(BodyHandlerBaseTest, GenerateBoundaryReturnsCorrectLength)
 
     std::string long_boundary = body_handler_base::generate_boundary(100);
     EXPECT_EQ(long_boundary.length(), 100);
+
+    // Edge case: zero length
+    std::string empty_boundary = body_handler_base::generate_boundary(0);
+    EXPECT_EQ(empty_boundary.length(), 0);
 }
 
 TEST_F(BodyHandlerBaseTest, GenerateBoundaryContainsOnlyValidChars)

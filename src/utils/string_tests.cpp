@@ -3,21 +3,18 @@
 
 using namespace gwmilter::utils::string;
 
-class StringUtilsTest : public ::testing::Test {
-};
-
 // ============================================
 // to_lower tests
 // ============================================
 
-TEST_F(StringUtilsTest, ToLowerConvertsUppercase)
+TEST(StringUtilsTest, ToLowerConvertsUppercase)
 {
     EXPECT_EQ(to_lower("HELLO"), "hello");
     EXPECT_EQ(to_lower("WORLD"), "world");
     EXPECT_EQ(to_lower("ABC123XYZ"), "abc123xyz");
 }
 
-TEST_F(StringUtilsTest, ToLowerPreservesNonAlpha)
+TEST(StringUtilsTest, ToLowerPreservesNonAlpha)
 {
     EXPECT_EQ(to_lower("Test-123!@#"), "test-123!@#");
     EXPECT_EQ(to_lower("user@DOMAIN.COM"), "user@domain.com");
@@ -27,20 +24,20 @@ TEST_F(StringUtilsTest, ToLowerPreservesNonAlpha)
 // iequals tests
 // ============================================
 
-TEST_F(StringUtilsTest, IequalsMatchesDifferentCase)
+TEST(StringUtilsTest, IequalsMatchesDifferentCase)
 {
     EXPECT_TRUE(iequals("Hello", "hello"));
     EXPECT_TRUE(iequals("WORLD", "world"));
     EXPECT_TRUE(iequals("Content-Type", "content-type"));
 }
 
-TEST_F(StringUtilsTest, IequalsReturnsFalseForDifferentStrings)
+TEST(StringUtilsTest, IequalsReturnsFalseForDifferentStrings)
 {
     EXPECT_FALSE(iequals("hello", "world"));
     EXPECT_FALSE(iequals("test", "testing"));
 }
 
-TEST_F(StringUtilsTest, IequalsHandlesEmptyStrings)
+TEST(StringUtilsTest, IequalsHandlesEmptyStrings)
 {
     EXPECT_TRUE(iequals("", ""));
     EXPECT_FALSE(iequals("", "nonempty"));
@@ -51,13 +48,13 @@ TEST_F(StringUtilsTest, IequalsHandlesEmptyStrings)
 // set_to_string tests
 // ============================================
 
-TEST_F(StringUtilsTest, SetToStringSingleElement)
+TEST(StringUtilsTest, SetToStringSingleElement)
 {
     std::set<std::string> single_set{"alice@example.com"};
     EXPECT_EQ(set_to_string(single_set), "alice@example.com");
 }
 
-TEST_F(StringUtilsTest, SetToStringMultipleElements)
+TEST(StringUtilsTest, SetToStringMultipleElements)
 {
     std::set<std::string> multi_set{"alice@example.com", "bob@example.com", "charlie@example.com"};
     // Sets are ordered, so we can predict the output
