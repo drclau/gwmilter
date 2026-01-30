@@ -82,7 +82,10 @@ RUN apk add --no-cache \
     'fmt~11.2' \
     'spdlog~1.15' \
     'gtest~1.16' \
-    'cmake~3.31'
+    'cmake~3.31' \
+    'gmime~3.2' \
+    'gpgme~1.24' \
+    'libharu~2.4'
 
 # Copy built libraries from builder stage
 COPY --from=builder /usr/local/lib/libegpgcrypt.so* /usr/local/lib/
