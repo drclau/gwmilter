@@ -211,8 +211,8 @@ else()
         "  2. Allow git fetch with -DFETCH_EXTERNAL_LIBS=ON")
 endif()
 
-# Toggle cfg2 module and utilities (demo/tests) on demand; default OFF while migrating
-option(ENABLE_CFG2 "Build cfg2 module and utilities (demo/tests)" OFF)
+# Toggle cfg2 demo executable (cfg2 module itself is always built as part of gwmilter)
+option(ENABLE_CFG2_DEMO "Build cfg2_demo standalone executable" OFF)
 
 # Set include directories for gwmilter target
 target_include_directories(gwmilter PRIVATE
@@ -265,12 +265,99 @@ option(BUILD_TESTING "Enable building tests via CTest/GTest" OFF)
 include(CTest)
 if(BUILD_TESTING)
     enable_testing()
+
+    find_package(GTest REQUIRED)
+    include(GoogleTest)
+
+    # ============================================
+    # gwmilter_tests: Unified test suite for all gwmilter components
+    # ============================================
+    add_executable(gwmilter_tests
+        # Utils tests
+        src/utils/string_tests.cpp
+        src/utils/uid_generator_tests.cpp
+        # Handlers tests
+        src/handlers/noop_body_handler_tests.cpp
+        src/handlers/body_handler_base_tests.cpp
+        src/handlers/pgp_body_handler_tests.cpp
+        src/handlers/smime_body_handler_tests.cpp
+        src/handlers/pdf_body_handler_tests.cpp
+        # cfg2 tests
+        src/cfg2/deserializer_tests.cpp
+        src/cfg2/dynamic_section_tests.cpp
+        src/cfg2/config_tests.cpp
+        src/cfg2/config_node_tests.cpp
+        src/cfg2/ini_reader_tests.cpp
+        src/cfg2/multiple_same_type_test.cpp
+        # Source files needed for tests
+        src/utils/string.cpp
+        src/utils/uid_generator.cpp
+        src/handlers/body_handler.cpp
+        src/handlers/noop_body_handler.cpp
+        src/handlers/pgp_body_handler.cpp
+        src/handlers/smime_body_handler.cpp
+        src/handlers/pdf_body_handler.cpp
+        src/cfg2/section_registry.cpp
+        src/cfg2/config.cpp
+        src/cfg2/ini_reader.cpp
+        src/cfg2/config_manager.cpp
+    )
+
+    target_include_directories(gwmilter_tests PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${EGPGCRYPT_INCLUDE_DIR}
+        ${EPDFCRYPT_INCLUDE_DIR}
+        ${GLIB_INCLUDE_DIRS}
+        ${GMIME_INCLUDE_DIRS}
+        ${simpleini_SOURCE_DIR}
+    )
+
+    target_link_libraries(gwmilter_tests PRIVATE
+        GTest::gtest_main
+        spdlog::spdlog
+        fmt::fmt
+        ${EGPGCRYPT_LIBRARY}
+        ${EPDFCRYPT_LIBRARY}
+        PkgConfig::GLIB
+        PkgConfig::GMIME
+    )
+
+    target_compile_definitions(gwmilter_tests PRIVATE UNIT_TESTING)
+
+    set_target_properties(gwmilter_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+    )
+
+    # Add external library dependencies if built externally
+    if(USE_EGPGCRYPT_EXTERNAL)
+        add_dependencies(gwmilter_tests egpgcrypt_external)
+        set_target_properties(gwmilter_tests PROPERTIES
+            BUILD_RPATH "${EGPGCRYPT_INSTALL_DIR}/lib")
+    endif()
+    if(USE_EPDFCRYPT_EXTERNAL)
+        add_dependencies(gwmilter_tests epdfcrypt_external)
+        get_target_property(existing_rpath gwmilter_tests BUILD_RPATH)
+        if(existing_rpath)
+            set_target_properties(gwmilter_tests PROPERTIES
+                BUILD_RPATH "${existing_rpath}:${EPDFCRYPT_INSTALL_DIR}/lib")
+        else()
+            set_target_properties(gwmilter_tests PROPERTIES
+                BUILD_RPATH "${EPDFCRYPT_INSTALL_DIR}/lib")
+        endif()
+    endif()
+
+    # Register GoogleTest-based tests individually with CTest
+    gtest_discover_tests(gwmilter_tests
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        DISCOVERY_TIMEOUT 60
+    )
 endif()
 
-if(ENABLE_CFG2)
+if(ENABLE_CFG2_DEMO)
     find_package(Threads REQUIRED)
 
-    # Add cfg2 demo executable with new modular structure
+    # Add cfg2 demo executable - standalone demonstration of cfg2 functionality
     add_executable(cfg2_demo
         src/cfg2/demo.cpp
         src/cfg2/section_registry.cpp
@@ -282,8 +369,8 @@ if(ENABLE_CFG2)
 
     target_include_directories(cfg2_demo PRIVATE
         ${PROJECT_SOURCE_DIR}/src
-    ${simpleini_SOURCE_DIR}
-)
+        ${simpleini_SOURCE_DIR}
+    )
 
     target_link_libraries(cfg2_demo
         PRIVATE
@@ -296,45 +383,4 @@ if(ENABLE_CFG2)
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
     )
-
-    if(BUILD_TESTING)
-        find_package(GTest REQUIRED)
-        include(GoogleTest)
-
-        # Add cfg2 tests executable with Google Test
-        add_executable(cfg2_tests
-            src/cfg2/deserializer_tests.cpp
-            src/cfg2/dynamic_section_tests.cpp
-            src/cfg2/config_tests.cpp
-            src/cfg2/config_node_tests.cpp
-            src/cfg2/ini_reader_tests.cpp
-            src/cfg2/multiple_same_type_test.cpp
-            src/cfg2/section_registry.cpp
-            src/cfg2/config.cpp
-            src/cfg2/ini_reader.cpp
-            src/cfg2/config_manager.cpp
-            src/utils/string.cpp
-        )
-
-        target_include_directories(cfg2_tests PRIVATE
-            ${PROJECT_SOURCE_DIR}/src
-            ${simpleini_SOURCE_DIR}
-        )
-
-        target_link_libraries(cfg2_tests PRIVATE
-            GTest::gtest_main
-            spdlog::spdlog
-        )
-
-        set_target_properties(cfg2_tests PROPERTIES
-            CXX_STANDARD 17
-            CXX_STANDARD_REQUIRED ON
-        )
-
-        # Register GoogleTest-based tests individually with CTest
-        gtest_discover_tests(cfg2_tests
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            DISCOVERY_TIMEOUT 60
-        )
-    endif()
 endif()
