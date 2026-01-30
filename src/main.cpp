@@ -110,9 +110,6 @@ int main(int argc, char *argv[])
     }
 
     try {
-        // seed random number generator
-        srand(time(nullptr));
-
         // Initialize cfg2 configuration system
         auto config_mgr = cfg2::ConfigManager(config_file);
         const auto config = config_mgr.getConfig();
