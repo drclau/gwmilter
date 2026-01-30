@@ -1,6 +1,7 @@
 #include "body_handler.hpp"
 #include "logger/logger.hpp"
 #include "utils/string.hpp"
+#include <random>
 
 namespace gwmilter {
 
@@ -55,12 +56,15 @@ void body_handler_base::postprocess()
 
 std::string body_handler_base::generate_boundary(std::size_t length)
 {
-    static std::string allowed_chars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890");
+    static const std::string allowed_chars("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890");
+    static thread_local std::mt19937_64 rng{std::random_device{}()};
+    std::uniform_int_distribution<std::size_t> dist(0, allowed_chars.size() - 1);
+
     std::string boundary;
     boundary.resize(length);
 
-    for (unsigned int i = 0; i < length; ++i)
-        boundary[i] = allowed_chars[rand() % allowed_chars.size()];
+    for (std::size_t i = 0; i < length; ++i)
+        boundary[i] = allowed_chars[dist(rng)];
 
     return boundary;
 }
