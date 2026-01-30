@@ -62,8 +62,6 @@ COPY CMakeLists.txt /app/
 COPY src/ /app/src/
 
 # Build unit tests
-# Note: gwmilter_tests is a unified test suite containing all unit tests
-# (utils, handlers, cfg2 module). Previously split into gwmilter_tests and cfg2_tests.
 RUN cmake \
     -DBUILD_TESTING=ON \
     -DEGPGCRYPT_PATH=/usr/local \
