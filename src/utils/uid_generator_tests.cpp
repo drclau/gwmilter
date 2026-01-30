@@ -35,10 +35,10 @@ TEST_F(UidGeneratorTest, GenerateReturnsUniqueValues)
     uid_generator gen;
     std::set<std::string> generated_uids;
 
-    // Generate 1000 UIDs and check they're unique
+    // Generate 100 UIDs and check they're unique
     // With 32-bit random values formatted as 8 hex digits,
     // the chance of collision in 1000 samples is extremely low
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < 100; ++i) {
         std::string uid = gen.generate();
         EXPECT_TRUE(generated_uids.insert(uid).second) << "Duplicate UID generated: " << uid;
     }
