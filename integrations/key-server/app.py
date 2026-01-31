@@ -252,12 +252,12 @@ def lookup(
             )  # Try direct filename match first
             if not key_data:
                 # Search for key ID in all keys
-                search_upper_clean = search.upper().replace("0X", "")
+                search_clean = search.lower().replace("0x", "")
                 for key_file in KEYS_DIR.glob("*.pgp"):
                     key_info = extract_key_info(key_file)
                     if key_info and (
-                        search_upper_clean in key_info["fingerprint"].upper()
-                        or search_upper_clean in key_info["keyid"].upper()
+                        search_clean in key_info["fingerprint"].lower()
+                        or search_clean in key_info["keyid"].lower()
                     ):
                         key_data = key_file.read_text()
                         break
@@ -315,8 +315,8 @@ def lookup(
             is_key_id_search = search.startswith("0x") or re.match(
                 r"^[A-Fa-f0-9]{8,40}$", search
             )
-            search_upper_clean = (
-                search.upper().replace("0X", "") if is_key_id_search else None
+            search_clean = (
+                search_lower.replace("0x", "") if is_key_id_search else None
             )
 
             for key in keys:
@@ -338,10 +338,10 @@ def lookup(
                         match_found = True
 
                 # Key ID or fingerprint matching
-                if not match_found and search_upper_clean is not None:
+                if not match_found and search_clean is not None:
                     if (
-                        search_upper_clean in key["fingerprint"].upper()
-                        or search_upper_clean in key["keyid"].upper()
+                        search_clean in key["fingerprint"].lower()
+                        or search_clean in key["keyid"].lower()
                     ):
                         match_found = True
 
@@ -435,8 +435,8 @@ def lookup_by_id(
     for key_file in KEYS_DIR.glob("*.pgp"):
         key_info = extract_key_info(key_file)
         if key_info and (
-            keyid.upper() in key_info["fingerprint"].upper()
-            or keyid.upper() in key_info["keyid"].upper()
+            keyid.lower() in key_info["fingerprint"].lower()
+            or keyid.lower() in key_info["keyid"].lower()
         ):
             key_data = key_file.read_text()
 
