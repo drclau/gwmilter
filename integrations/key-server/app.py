@@ -7,7 +7,7 @@ import tempfile
 import urllib.parse
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import gnupg
 import uvicorn
@@ -23,20 +23,18 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger("sks-service")
-logger.info(f"Logging configured at {LOG_LEVEL} level")
+logger.info("Logging configured at %s level", LOG_LEVEL)
 
 app = FastAPI(title="PGP Key Server")
 
 # Configuration
-KEYS_DIR = os.environ.get("KEYS_DIR", "/app/keys/public")
+KEYS_DIR = Path(os.environ.get("KEYS_DIR", "/app/keys/public"))
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "11371"))
 
-# Set up GnuPG instance
+# GnuPG home directory
 GPG_HOME = os.environ.get("GNUPGHOME", "/app/gnupg")
-logger.info(f"Using GnuPG home directory: {GPG_HOME}")
-gpg = gnupg.GPG(gnupghome=GPG_HOME)
-gpg.encoding = "utf-8"
+logger.info("Using GnuPG home directory: %s", GPG_HOME)
 
 
 def sanitize_email(email: str) -> str:
@@ -49,69 +47,65 @@ def sanitize_email(email: str) -> str:
     return email.lower()
 
 
-def get_key_by_email(email: str) -> Optional[str]:
+def get_key_by_email(email: str) -> str | None:
     """
     Retrieve a PGP key for the given email address.
     """
     email = sanitize_email(email)
-    key_path = Path(KEYS_DIR) / f"{email}.pgp"
+    key_path = KEYS_DIR / f"{email}.pgp"
     if not key_path.exists():
         return None
 
     try:
-        with open(key_path, "r") as f:
-            return f.read()
-    except Exception as e:
-        logger.error(f"Error reading key file for {email}: {e}")
+        return key_path.read_text()
+    except (OSError, UnicodeDecodeError) as e:
+        logger.error("Error reading key file for %s: %s", email, e)
         return None
 
 
-def extract_key_info(key_path: Path) -> Optional[Dict[str, Any]]:
+def extract_key_info(key_path: Path) -> dict[str, Any] | None:
     """
     Extract detailed information from a PGP key file using the gnupg Python package.
     """
-    logger.info(f"Extracting key info from {key_path}")
+    logger.info("Extracting key info from %s", key_path)
     try:
         # Read the key content
-        with open(key_path, "r") as f:
-            key_content = f.read()
-        logger.debug(f"Successfully read key content from {key_path}")
+        key_content = key_path.read_text()
+        logger.debug("Successfully read key content from %s", key_path)
 
         # Create a temporary GPG instance to avoid affecting the main keyring
         with tempfile.TemporaryDirectory() as temp_dir:
-            logger.debug(f"Created temporary GPG directory at {temp_dir}")
+            logger.debug("Created temporary GPG directory at %s", temp_dir)
             temp_gpg = gnupg.GPG(gnupghome=temp_dir)
             temp_gpg.encoding = "utf-8"
 
             # Import the key to get its information
             import_result = temp_gpg.import_keys(key_content)
-            logger.debug(f"Key import result: {import_result.count} keys imported")
+            logger.debug("Key import result: %s keys imported", import_result.count)
 
             if not import_result.fingerprints:
-                logger.error(f"Failed to import key from {key_path}")
+                logger.error("Failed to import key from %s", key_path)
                 return None
 
             fingerprint = import_result.fingerprints[0]
-            logger.debug(f"Extracted fingerprint: {fingerprint}")
+            logger.debug("Extracted fingerprint: %s", fingerprint)
 
             # Get detailed information about the key
             keys = temp_gpg.list_keys(keys=[fingerprint])
             if not keys:
-                logger.error(f"Failed to retrieve key details for {fingerprint}")
+                logger.error("Failed to retrieve key details for %s", fingerprint)
                 return None
 
             key_data = keys[0]
-            logger.debug(f"Key data retrieved: keyid={key_data.get('keyid', 'N/A')}")
+            logger.debug("Key data retrieved: keyid=%s", key_data.get("keyid", "N/A"))
 
             # Extract user IDs
-            uids = []
-            for uid in key_data.get("uids", []):
-                uids.append(uid)
-            logger.debug(f"Extracted {len(uids)} user IDs")
+            uids = list(key_data.get("uids", []))
+            logger.debug("Extracted %s user IDs", len(uids))
 
             # Determine key algorithm number
             algo_num = key_data.get("algo", 0)  # Default to 0 if missing
-            logger.debug(f"Algorithm: {algo_num}")
+            logger.debug("Algorithm: %s", algo_num)
 
             # Get key length
             keylen = key_data.get("keylen", "")
@@ -119,26 +113,26 @@ def extract_key_info(key_path: Path) -> Optional[Dict[str, Any]]:
                 # Try to determine key length from type
                 if algo_num in ["22", "18"]:
                     keylen = "256"
-            logger.debug(f"Key length: {keylen}")
+            logger.debug("Key length: %s", keylen)
 
             # Extract creation date (as Unix timestamp)
             created_timestamp = key_data.get("date", "")
-            logger.debug(f"Creation timestamp: {created_timestamp}")
+            logger.debug("Creation timestamp: %s", created_timestamp)
 
             # Extract expiration date (as Unix timestamp)
             expires_timestamp = key_data.get("expires", "")
-            logger.debug(f"Expiration timestamp: {expires_timestamp}")
+            logger.debug("Expiration timestamp: %s", expires_timestamp)
 
             # Determine flags
             flags = ""
-            if expires_timestamp and expires_timestamp != "":
+            if expires_timestamp:
                 # Check if key is expired
                 try:
                     if int(expires_timestamp) < datetime.now().timestamp():
                         flags += "e"
                         logger.debug("Key is expired, adding 'e' flag")
                 except ValueError:
-                    logger.warning(f"Invalid expiration timestamp: {expires_timestamp}")
+                    logger.warning("Invalid expiration timestamp: %s", expires_timestamp)
 
             # Construct the key info object
             key_info = {
@@ -156,26 +150,26 @@ def extract_key_info(key_path: Path) -> Optional[Dict[str, Any]]:
             }
 
             logger.info(
-                f"Successfully extracted key info for {key_path.name} (ID: {key_info['keyid']})"
+                "Successfully extracted key info for %s (ID: %s)",
+                key_path.name,
+                key_info["keyid"],
             )
             return key_info
 
-    except Exception as e:
-        logger.error(f"Error extracting key info for {key_path}: {e}")
+    except (OSError, UnicodeDecodeError, ValueError, TypeError) as e:
+        logger.error("Error extracting key info for %s: %s", key_path, e)
         return None
 
 
-def list_all_keys() -> List[Dict[str, Any]]:
+def list_all_keys() -> list[dict[str, Any]]:
     """
     List all keys in the public directory with detailed information.
     """
-    keys = []
-    for key_file in Path(KEYS_DIR).glob("*.pgp"):
-        key_info = extract_key_info(key_file)
-        if key_info:
-            keys.append(key_info)
-
-    return keys
+    return [
+        key_info
+        for key_file in KEYS_DIR.glob("*.pgp")
+        if (key_info := extract_key_info(key_file))
+    ]
 
 
 @app.get("/")
@@ -187,8 +181,8 @@ def root():
     # Use PlainTextResponse to ensure compatibility with older clients
     return Response(
         content="SKS OpenPGP Public Key Server\n"
-        + "Software: sks-service 1.0.0\n"
-        + "Supported operations: get, index\n",
+        "Software: sks-service 1.0.0\n"
+        "Supported operations: get, index\n",
         media_type="text/plain",
     )
 
@@ -201,19 +195,19 @@ def lookup(
         max_length=5,
         description="must be 'get' or 'index'",
     ),
-    search: Optional[str] = Query(
+    search: str | None = Query(
         None, min_length=1, max_length=256, description="limited to 256 chars"
     ),
-    options: Optional[str] = Query(
+    options: str | None = Query(
         None,
         min_length=1,
         max_length=100,
         description="comma‐separated opts, ≤100 chars",
     ),
-    fingerprint: Optional[str] = Query(
+    fingerprint: str | None = Query(
         None, pattern="^(on|off)$", max_length=3, description="'on' or 'off'"
     ),
-    exact: Optional[str] = Query(
+    exact: str | None = Query(
         None, pattern="^(on|off)$", max_length=3, description="'on' or 'off'"
     ),
 ):
@@ -234,7 +228,8 @@ def lookup(
     - exact: Whether to match exactly (on/off)
     """
     logger.info(
-        f"Lookup request: op={op}, search={search}, options={options}, fingerprint={fingerprint}, exact={exact}"
+        "Lookup request: op=%s, search=%s, options=%s, fingerprint=%s, exact=%s",
+        op, search, options, fingerprint, exact,
     )
 
     # Parse options
@@ -249,27 +244,26 @@ def lookup(
         key_data = None
         search_type = ""
 
-        logger.info(f"Key retrieval request: op=get, search={search}")
+        logger.info("Key retrieval request: op=get, search=%s", search)
 
         # Check if it's a key ID search (starts with 0x)
         if search.startswith("0x") or re.match(r"^[A-Fa-f0-9]{8,40}$", search):
             search_type = "keyid"
-            logger.info(f"Key ID/fingerprint search: {search}")
+            logger.info("Key ID/fingerprint search: %s", search)
             key_data = get_key_by_email(
                 search.lower()
             )  # Try direct filename match first
             if not key_data:
                 # Search for key ID in all keys
-                for key_file in Path(KEYS_DIR).glob("*.pgp"):
+                search_upper_clean = search.upper().replace("0X", "")
+                for key_file in KEYS_DIR.glob("*.pgp"):
                     key_info = extract_key_info(key_file)
                     if key_info and (
-                        search.upper().replace("0X", "")
-                        in key_info["fingerprint"].upper()
-                        or search.upper().replace("0X", "") in key_info["keyid"].upper()
+                        search_upper_clean in key_info["fingerprint"].upper()
+                        or search_upper_clean in key_info["keyid"].upper()
                     ):
-                        with open(key_file, "r") as f:
-                            key_data = f.read()
-                            break
+                        key_data = key_file.read_text()
+                        break
         else:
             # Try email search
             search_type = "email"
@@ -278,7 +272,7 @@ def lookup(
             )
             if email_match:
                 email = email_match.group(1)
-                logger.info(f"Email search: {email}")
+                logger.info("Email search: %s", email)
                 key_data = get_key_by_email(email)
 
                 # If exact search is enabled, verify that search matches email exactly
@@ -286,7 +280,7 @@ def lookup(
                     key_data = None
 
         if key_data:
-            logger.info(f"Key found for {search_type} search: {search}")
+            logger.info("Key found for %s search: %s", search_type, search)
 
             # Ensure the key data has proper PGP formatting
             if "-----BEGIN PGP PUBLIC KEY BLOCK-----" not in key_data:
@@ -297,7 +291,7 @@ def lookup(
             if not machine_readable:
                 content_type = "application/pgp-keys"
 
-            logger.info(f"Returning key with content-type: {content_type}")
+            logger.info("Returning key with content-type: %s", content_type)
 
             # Return with the correct content type for PGP keys
             return Response(
@@ -309,9 +303,9 @@ def lookup(
                     "X-HKP-Key-Type": "public",
                 },
             )
-        else:
-            logger.warning(f"Key not found for search: {search}")
-            raise HTTPException(status_code=404, detail=f"Key not found for {search}")
+
+        logger.warning("Key not found for search: %s", search)
+        raise HTTPException(status_code=404, detail=f"Key not found for {search}")
 
     elif op == "index":
         # List or search through keys
@@ -320,37 +314,37 @@ def lookup(
         # Filter by search term if provided
         if search:
             filtered_keys = []
+            search_lower = search.lower()
+            is_key_id_search = search.startswith("0x") or re.match(
+                r"^[A-Fa-f0-9]{8,40}$", search
+            )
+            search_upper_clean = (
+                search.upper().replace("0X", "") if is_key_id_search else None
+            )
+
             for key in keys:
                 match_found = False
+                email_lower = key["email"].lower()
 
                 # Email matching
                 if exact_search:
                     # Exact match against email or UIDs
-                    if key["email"].lower() == search.lower():
+                    if email_lower == search_lower:
                         match_found = True
-                    else:
-                        for uid in key["uids"]:
-                            if uid.lower() == search.lower():
-                                match_found = True
-                                break
+                    elif any(uid.lower() == search_lower for uid in key["uids"]):
+                        match_found = True
                 else:
                     # Substring match against email or UIDs
-                    if search.lower() in key["email"].lower():
+                    if search_lower in email_lower:
                         match_found = True
-                    else:
-                        for uid in key["uids"]:
-                            if search.lower() in uid.lower():
-                                match_found = True
-                                break
+                    elif any(search_lower in uid.lower() for uid in key["uids"]):
+                        match_found = True
 
                 # Key ID or fingerprint matching
-                if not match_found and (
-                    search.startswith("0x") or re.match(r"^[A-Fa-f0-9]{8,40}$", search)
-                ):
-                    search_term = search.upper().replace("0X", "")
+                if not match_found and search_upper_clean is not None:
                     if (
-                        search_term in key["fingerprint"].upper()
-                        or search_term in key["keyid"].upper()
+                        search_upper_clean in key["fingerprint"].upper()
+                        or search_upper_clean in key["keyid"].upper()
                     ):
                         match_found = True
 
@@ -360,7 +354,7 @@ def lookup(
             keys = filtered_keys
 
         # Format the response according to the HKP specification
-        response = f"info:1:{len(keys)}\n"
+        parts = [f"info:1:{len(keys)}"]
 
         show_fingerprint = fingerprint == "on"
 
@@ -368,16 +362,20 @@ def lookup(
             # Format the pub line according to spec
             # pub:<keyid>:<algo>:<keylen>:<creationdate>:<expirationdate>:<flags>
             key_id = key["fingerprint"] if show_fingerprint else key["keyid"]
-            response += f"pub:{key_id}:{key['algo']}:{key['keylen']}:{key['created']}:{key['expires']}:{key['flags']}\n"
+            parts.append(
+                f"pub:{key_id}:{key['algo']}:{key['keylen']}:{key['created']}:{key['expires']}:{key['flags']}"
+            )
 
             # Add all UIDs associated with the key
             # uid:<escaped uid string>:<creationdate>:<expirationdate>:<flags>
             for uid in key["uids"]:
                 # Escape the UID string per the specification
                 escaped_uid = urllib.parse.quote(uid, safe="@(),.=&-_~!")
-                response += f"uid:{escaped_uid}:{key['created']}:{key['expires']}:{key['flags']}\n"
+                parts.append(
+                    f"uid:{escaped_uid}:{key['created']}:{key['expires']}:{key['flags']}"
+                )
 
-        return response
+        return "\n".join(parts) + "\n"
 
     else:
         raise HTTPException(status_code=400, detail="Invalid operation")
@@ -392,8 +390,7 @@ def get_key(email: str):
     key_data = get_key_by_email(email)
     if key_data:
         return Response(content=key_data, media_type="application/pgp-keys")
-    else:
-        raise HTTPException(status_code=404, detail=f"Key not found for {email}")
+    raise HTTPException(status_code=404, detail=f"Key not found for {email}")
 
 
 @app.get("/keys")
@@ -435,34 +432,33 @@ def lookup_by_id(
     Direct key lookup by ID.
     Some GPG clients will attempt to retrieve keys using this pattern rather than query parameters.
     """
-    logger.info(f"Direct key lookup by ID: {keyid}")
+    logger.info("Direct key lookup by ID: %s", keyid)
 
     # Search for the key by ID
-    for key_file in Path(KEYS_DIR).glob("*.pgp"):
+    for key_file in KEYS_DIR.glob("*.pgp"):
         key_info = extract_key_info(key_file)
         if key_info and (
             keyid.upper() in key_info["fingerprint"].upper()
             or keyid.upper() in key_info["keyid"].upper()
         ):
-            with open(key_file, "r") as f:
-                key_data = f.read()
+            key_data = key_file.read_text()
 
-                # Return with the correct content type
-                return Response(
-                    content=key_data,
-                    media_type="application/pgp-keys",
-                    headers={
-                        "Content-Disposition": f'attachment; filename="{keyid}.asc"',
-                        "X-HKP-Status": "Success",
-                        "X-HKP-Key-Type": "public",
-                    },
-                )
+            # Return with the correct content type
+            return Response(
+                content=key_data,
+                media_type="application/pgp-keys",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{keyid}.asc"',
+                    "X-HKP-Status": "Success",
+                    "X-HKP-Key-Type": "public",
+                },
+            )
 
     # If we get here, no key was found
     raise HTTPException(status_code=404, detail=f"Key not found: {keyid}")
 
 
 if __name__ == "__main__":
-    logger.info(f"Starting key-server on {HOST}:{PORT}")
-    logger.info(f"Serving keys from {KEYS_DIR}")
+    logger.info("Starting key-server on %s:%s", HOST, PORT)
+    logger.info("Serving keys from %s", KEYS_DIR)
     uvicorn.run(app, host=HOST, port=PORT)
