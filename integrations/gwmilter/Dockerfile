@@ -1,7 +1,8 @@
 ARG ALPINE_VERSION=3.22
-ARG LIBEGPGCRYPT_COMMIT=49360bf5a07d9aec35f1cf311e9d14f73e01b5b0
-ARG LIBEPDFCRYPT_COMMIT=2eacdca2838a67aaada39241d2fda0136a28e2c2
-ARG SIMPLEINI_VERSION=v4.25
+ARG FETCH_EXTERNAL_LIBS=ON
+ARG EGPGCRYPT_GIT_TAG=49360bf5a07d9aec35f1cf311e9d14f73e01b5b0
+ARG EPDFCRYPT_GIT_TAG=2eacdca2838a67aaada39241d2fda0136a28e2c2
+ARG SIMPLEINI_GIT_TAG=v4.25
 
 # Stage 1: Build dependencies and gwmilter
 FROM alpine:${ALPINE_VERSION} AS builder
@@ -28,40 +29,32 @@ RUN apk add --no-cache \
     cmake \
     git
 
-# Build and install libegpgcrypt
-RUN git clone --depth 1 https://github.com/rzvncj/libegpgcrypt.git /deps/libegpgcrypt && \
-    cd /deps/libegpgcrypt && \
-    git fetch --depth 1 origin ${LIBEGPGCRYPT_COMMIT} && \
-    git checkout ${LIBEGPGCRYPT_COMMIT} && \
-    ./bootstrap && \
-    ./configure && \
-    make -j$(nproc) && \
-    make install
-
-# Build and install libepdfcrypt
-RUN git clone --depth 1 https://github.com/rzvncj/libepdfcrypt.git /deps/libepdfcrypt && \
-    cd /deps/libepdfcrypt && \
-    git fetch --depth 1 origin ${LIBEPDFCRYPT_COMMIT} && \
-    git checkout ${LIBEPDFCRYPT_COMMIT} && \
-    ./bootstrap && \
-    ./configure && \
-    make -j$(nproc) && \
-    make install
-
-# Clone SimpleIni for vendored build (CMake will auto-detect in third_party/)
-RUN git clone --depth 1 https://github.com/brofield/simpleini.git /app/third_party/simpleini && \
-    cd /app/third_party/simpleini && \
-    git fetch --depth 1 origin ${SIMPLEINI_VERSION} && \
-    git checkout ${SIMPLEINI_VERSION}
-
 WORKDIR /app
+
+# Copy local third-party sources (directory may be empty).
+# When third_party/ contains library sources (e.g. libegpgcrypt/), CMake builds
+# from them instead of cloning from GitHub.
+COPY third_party/ /app/third_party/
 
 # Copy the source code
 COPY LICENSE README.md CMakeLists.txt /app/
 COPY src/ /app/src/
 
-# Build gwmilter
-RUN cmake -DBUILD_TESTING=OFF -DEGPGCRYPT_PATH=/usr/local -DEPDFCRYPT_PATH=/usr/local -DWERROR=ON -B build -S . && cmake --build build --target gwmilter -- -j$(nproc)
+# Build gwmilter (CMake fetches missing dependencies when FETCH_EXTERNAL_LIBS=ON)
+ARG FETCH_EXTERNAL_LIBS
+ARG EGPGCRYPT_GIT_TAG
+ARG EPDFCRYPT_GIT_TAG
+ARG SIMPLEINI_GIT_TAG
+RUN cmake -DBUILD_TESTING=OFF -DFETCH_EXTERNAL_LIBS=${FETCH_EXTERNAL_LIBS} -DWERROR=ON \
+        -DEGPGCRYPT_GIT_TAG=${EGPGCRYPT_GIT_TAG} \
+        -DEPDFCRYPT_GIT_TAG=${EPDFCRYPT_GIT_TAG} \
+        -DSIMPLEINI_GIT_TAG=${SIMPLEINI_GIT_TAG} \
+        -B build -S . && \
+    cmake --build build --target gwmilter -- -j$(nproc)
+
+# Ensure built libraries are in a known location for the runtime stage
+RUN cp -a /app/build/_deps/egpgcrypt/lib/libegpgcrypt.so* /usr/local/lib/ && \
+    cp -a /app/build/_deps/epdfcrypt/lib/libepdfcrypt.so* /usr/local/lib/
 
 # Stage 2: Create the runtime image
 FROM alpine:${ALPINE_VERSION}

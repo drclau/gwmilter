@@ -5,7 +5,8 @@
 # Build directories
 /build/
 /cmake-build-*/
-/third_party/
+/third_party/*
+!/third_party/.gitkeep
 /.cache/
 /compile_commands.json
 
