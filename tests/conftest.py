@@ -137,7 +137,7 @@ def mailpit_client(request: pytest.FixtureRequest, mailpit_url):
             logger.debug("Deleting all messages from Mailpit")
             client.delete_all_messages()
         else:
-            logger.debug("Not deleting messages from Mailpit because test failed")
+            logger.info("Not deleting messages from Mailpit because test failed")
 
     except Exception:
         pass  # Ignore cleanup errors
