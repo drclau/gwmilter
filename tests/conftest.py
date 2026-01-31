@@ -127,17 +127,17 @@ def mailpit_client(request: pytest.FixtureRequest, mailpit_url):
     if request.config.getoption("--disable-email-cleanup") or request.config.getini(
         "disable_email_cleanup"
     ):
-        logger.info("Email cleanup disabled")
+        logger.debug("Email cleanup disabled")
         return
 
     # Clean up any remaining messages after tests
     try:
         # Only delete if all tests passed. This is useful for debugging.
         if request.session.testsfailed == 0:
-            logger.info("Deleting all messages from Mailpit")
+            logger.debug("Deleting all messages from Mailpit")
             client.delete_all_messages()
         else:
-            logger.info("Not deleting messages from Mailpit because test failed")
+            logger.debug("Not deleting messages from Mailpit because test failed")
 
     except Exception:
         pass  # Ignore cleanup errors
@@ -166,7 +166,7 @@ def ensure_gnupghome():
     """Default GNUPGHOME for tests unless already set."""
     if not os.environ.get("GNUPGHOME"):
         os.environ["GNUPGHOME"] = str(PROJECT_ROOT / "integrations" / "gnupg")
-        logger.info("GNUPGHOME defaulted to: %s", os.environ["GNUPGHOME"])
+        logger.debug("GNUPGHOME defaulted to: %s", os.environ["GNUPGHOME"])
 
 
 def run_key_cleanup(pattern: str, pgp_utils_args: list[str]) -> None:
@@ -224,7 +224,7 @@ def cleanup_keyserver_retrieved_keys(request):
     """Fixture to clean up keys containing 'missing' after test."""
     pgp_utils_args = get_gwmilter_flag(request)
     try:
-        logger.info("Resetting keyserver to alive status in GPG dirmngr...")
+        logger.debug("Resetting keyserver to alive status in GPG dirmngr...")
         run_keyserver_reset(pgp_utils_args)
     except Exception as e:
         logger.error("Failed to reset keyserver: %s", e)
@@ -233,7 +233,7 @@ def cleanup_keyserver_retrieved_keys(request):
     yield
 
     try:
-        logger.info("Cleaning up keys with 'missing' in them...")
+        logger.debug("Cleaning up keys with 'missing' in them...")
         cleanup_pattern = "pgp-(valid|expired)-missing-[0-9]+@example.com"
         run_key_cleanup(cleanup_pattern, pgp_utils_args)
     except Exception as e:
@@ -249,8 +249,8 @@ def keys_dir(request: pytest.FixtureRequest) -> str:
     cli_value = request.config.getoption("--keys-dir")
     ini_value = request.config.getini("keys_dir")
     default_keys_dir = PROJECT_ROOT / "integrations" / "keys"
-    logger.info("Default keys directory: %s", default_keys_dir)
-    logger.info("Keys directory: %s", cli_value or ini_value or str(default_keys_dir))
+    logger.debug("Default keys directory: %s", default_keys_dir)
+    logger.debug("Keys directory: %s", cli_value or ini_value or str(default_keys_dir))
     return cli_value or ini_value or str(default_keys_dir)
 
 
@@ -258,14 +258,14 @@ def get_gwmilter_flag(request: pytest.FixtureRequest) -> list[str]:
     """Return CLI flags for pgp-utils.sh based on gwmilter execution mode."""
     # CLI --gwmilter-local overrides everything.
     if request.config.getoption("--gwmilter-local"):
-        logger.info("Running gwmilter locally")
+        logger.debug("Running gwmilter locally")
         return ["--local"]
 
     container = request.config.getoption(
         "--gwmilter-container"
     ) or request.config.getini("gwmilter_container")
     if container:
-        logger.info("Running gwmilter in container: %s", container)
+        logger.debug("Running gwmilter in container: %s", container)
         return ["--container", container]
 
     return ["--local"]

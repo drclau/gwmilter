@@ -282,7 +282,7 @@ class MailpitClient:
                     recipients = [to.address for to in msg.to]
                     if any(recipient in recipients for recipient in to_addrs):
                         found_messages.append(ID(msg.id))
-                        logger.info(
+                        logger.debug(
                             "Email found in mailpit with message ID: %s",
                             msg.message_id,
                         )
@@ -292,7 +292,7 @@ class MailpitClient:
             # If we've found the required count, start counting extra cycles
             if required_count_found:
                 cycles_after_found += 1
-                logger.info(
+                logger.debug(
                     "Found required count, waiting extra cycle %d/%d",
                     cycles_after_found,
                     extra_cycles,
