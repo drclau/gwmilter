@@ -23,7 +23,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger("sks-service")
-logger.info("Logging configured at %s level", LOG_LEVEL)
+logger.info(f"Logging configured at {LOG_LEVEL} level")
 
 app = FastAPI(title="PGP Key Server")
 
@@ -34,7 +34,7 @@ PORT = int(os.environ.get("PORT", "11371"))
 
 # GnuPG home directory
 GPG_HOME = os.environ.get("GNUPGHOME", "/app/gnupg")
-logger.info("Using GnuPG home directory: %s", GPG_HOME)
+logger.info(f"Using GnuPG home directory: {GPG_HOME}")
 
 
 def sanitize_email(email: str) -> str:
@@ -59,7 +59,7 @@ def get_key_by_email(email: str) -> str | None:
     try:
         return key_path.read_text()
     except (OSError, UnicodeDecodeError) as e:
-        logger.error("Error reading key file for %s: %s", email, e)
+        logger.error(f"Error reading key file for {email}: {e}")
         return None
 
 
@@ -67,45 +67,45 @@ def extract_key_info(key_path: Path) -> dict[str, Any] | None:
     """
     Extract detailed information from a PGP key file using the gnupg Python package.
     """
-    logger.info("Extracting key info from %s", key_path)
+    logger.info(f"Extracting key info from {key_path}")
     try:
         # Read the key content
         key_content = key_path.read_text()
-        logger.debug("Successfully read key content from %s", key_path)
+        logger.debug(f"Successfully read key content from {key_path}")
 
         # Create a temporary GPG instance to avoid affecting the main keyring
         with tempfile.TemporaryDirectory() as temp_dir:
-            logger.debug("Created temporary GPG directory at %s", temp_dir)
+            logger.debug(f"Created temporary GPG directory at {temp_dir}")
             temp_gpg = gnupg.GPG(gnupghome=temp_dir)
             temp_gpg.encoding = "utf-8"
 
             # Import the key to get its information
             import_result = temp_gpg.import_keys(key_content)
-            logger.debug("Key import result: %s keys imported", import_result.count)
+            logger.debug(f"Key import result: {import_result.count} keys imported")
 
             if not import_result.fingerprints:
-                logger.error("Failed to import key from %s", key_path)
+                logger.error(f"Failed to import key from {key_path}")
                 return None
 
             fingerprint = import_result.fingerprints[0]
-            logger.debug("Extracted fingerprint: %s", fingerprint)
+            logger.debug(f"Extracted fingerprint: {fingerprint}")
 
             # Get detailed information about the key
             keys = temp_gpg.list_keys(keys=[fingerprint])
             if not keys:
-                logger.error("Failed to retrieve key details for %s", fingerprint)
+                logger.error(f"Failed to retrieve key details for {fingerprint}")
                 return None
 
             key_data = keys[0]
-            logger.debug("Key data retrieved: keyid=%s", key_data.get("keyid", "N/A"))
+            logger.debug(f"Key data retrieved: keyid={key_data.get('keyid', 'N/A')}")
 
             # Extract user IDs
             uids = list(key_data.get("uids", []))
-            logger.debug("Extracted %s user IDs", len(uids))
+            logger.debug(f"Extracted {len(uids)} user IDs")
 
             # Determine key algorithm number
             algo_num = key_data.get("algo", 0)  # Default to 0 if missing
-            logger.debug("Algorithm: %s", algo_num)
+            logger.debug(f"Algorithm: {algo_num}")
 
             # Get key length
             keylen = key_data.get("keylen", "")
@@ -113,15 +113,15 @@ def extract_key_info(key_path: Path) -> dict[str, Any] | None:
                 # Try to determine key length from type
                 if algo_num in ["22", "18"]:
                     keylen = "256"
-            logger.debug("Key length: %s", keylen)
+            logger.debug(f"Key length: {keylen}")
 
             # Extract creation date (as Unix timestamp)
             created_timestamp = key_data.get("date", "")
-            logger.debug("Creation timestamp: %s", created_timestamp)
+            logger.debug(f"Creation timestamp: {created_timestamp}")
 
             # Extract expiration date (as Unix timestamp)
             expires_timestamp = key_data.get("expires", "")
-            logger.debug("Expiration timestamp: %s", expires_timestamp)
+            logger.debug(f"Expiration timestamp: {expires_timestamp}")
 
             # Determine flags
             flags = ""
@@ -132,7 +132,7 @@ def extract_key_info(key_path: Path) -> dict[str, Any] | None:
                         flags += "e"
                         logger.debug("Key is expired, adding 'e' flag")
                 except ValueError:
-                    logger.warning("Invalid expiration timestamp: %s", expires_timestamp)
+                    logger.warning(f"Invalid expiration timestamp: {expires_timestamp}")
 
             # Construct the key info object
             key_info = {
@@ -150,14 +150,12 @@ def extract_key_info(key_path: Path) -> dict[str, Any] | None:
             }
 
             logger.info(
-                "Successfully extracted key info for %s (ID: %s)",
-                key_path.name,
-                key_info["keyid"],
+                f"Successfully extracted key info for {key_path.name} (ID: {key_info['keyid']})"
             )
             return key_info
 
     except (OSError, UnicodeDecodeError, ValueError, TypeError) as e:
-        logger.error("Error extracting key info for %s: %s", key_path, e)
+        logger.error(f"Error extracting key info for {key_path}: {e}")
         return None
 
 
@@ -228,8 +226,7 @@ def lookup(
     - exact: Whether to match exactly (on/off)
     """
     logger.info(
-        "Lookup request: op=%s, search=%s, options=%s, fingerprint=%s, exact=%s",
-        op, search, options, fingerprint, exact,
+        f"Lookup request: op={op}, search={search}, options={options}, fingerprint={fingerprint}, exact={exact}"
     )
 
     # Parse options
@@ -244,12 +241,12 @@ def lookup(
         key_data = None
         search_type = ""
 
-        logger.info("Key retrieval request: op=get, search=%s", search)
+        logger.info(f"Key retrieval request: op=get, search={search}")
 
         # Check if it's a key ID search (starts with 0x)
         if search.startswith("0x") or re.match(r"^[A-Fa-f0-9]{8,40}$", search):
             search_type = "keyid"
-            logger.info("Key ID/fingerprint search: %s", search)
+            logger.info(f"Key ID/fingerprint search: {search}")
             key_data = get_key_by_email(
                 search.lower()
             )  # Try direct filename match first
@@ -272,7 +269,7 @@ def lookup(
             )
             if email_match:
                 email = email_match.group(1)
-                logger.info("Email search: %s", email)
+                logger.info(f"Email search: {email}")
                 key_data = get_key_by_email(email)
 
                 # If exact search is enabled, verify that search matches email exactly
@@ -280,7 +277,7 @@ def lookup(
                     key_data = None
 
         if key_data:
-            logger.info("Key found for %s search: %s", search_type, search)
+            logger.info(f"Key found for {search_type} search: {search}")
 
             # Ensure the key data has proper PGP formatting
             if "-----BEGIN PGP PUBLIC KEY BLOCK-----" not in key_data:
@@ -291,7 +288,7 @@ def lookup(
             if not machine_readable:
                 content_type = "application/pgp-keys"
 
-            logger.info("Returning key with content-type: %s", content_type)
+            logger.info(f"Returning key with content-type: {content_type}")
 
             # Return with the correct content type for PGP keys
             return Response(
@@ -304,7 +301,7 @@ def lookup(
                 },
             )
 
-        logger.warning("Key not found for search: %s", search)
+        logger.warning(f"Key not found for search: {search}")
         raise HTTPException(status_code=404, detail=f"Key not found for {search}")
 
     elif op == "index":
@@ -432,7 +429,7 @@ def lookup_by_id(
     Direct key lookup by ID.
     Some GPG clients will attempt to retrieve keys using this pattern rather than query parameters.
     """
-    logger.info("Direct key lookup by ID: %s", keyid)
+    logger.info(f"Direct key lookup by ID: {keyid}")
 
     # Search for the key by ID
     for key_file in KEYS_DIR.glob("*.pgp"):
@@ -459,6 +456,6 @@ def lookup_by_id(
 
 
 if __name__ == "__main__":
-    logger.info("Starting key-server on %s:%s", HOST, PORT)
-    logger.info("Serving keys from %s", KEYS_DIR)
+    logger.info(f"Starting key-server on {HOST}:{PORT}")
+    logger.info(f"Serving keys from {KEYS_DIR}")
     uvicorn.run(app, host=HOST, port=PORT)
