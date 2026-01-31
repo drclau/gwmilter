@@ -1,8 +1,9 @@
-import os
+import logging
 import tempfile
-import shutil
-from typing import List, Optional
+
 import gnupg
+
+logger = logging.getLogger(__name__)
 
 
 class GPGTestWrapper:
@@ -14,24 +15,16 @@ class GPGTestWrapper:
 
     def __init__(self):
         """Initialize the GPG wrapper with a temporary directory for key storage."""
-        self.temp_dir = tempfile.mkdtemp(prefix="gpg_test_")
+        self._temp_dir = tempfile.TemporaryDirectory(prefix="gpg_test_")
+        self.temp_dir = self._temp_dir.name
         self.gpg = gnupg.GPG(gnupghome=self.temp_dir)
         self.gpg.encoding = "utf-8"
 
-    def __enter__(self):
-        """Context manager entry."""
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit - clean up temporary directory."""
-        self.cleanup()
-
     def cleanup(self):
         """Remove the temporary directory and all its contents."""
-        if os.path.exists(self.temp_dir):
-            shutil.rmtree(self.temp_dir)
+        self._temp_dir.cleanup()
 
-    def import_keys(self, key_paths: List[str]) -> List[str]:
+    def import_keys(self, key_paths: list[str]) -> list[str]:
         """Import GPG keys from the provided file paths.
 
         Args:
@@ -42,7 +35,7 @@ class GPGTestWrapper:
         """
         imported_keys = []
         for key_path in key_paths:
-            with open(key_path, "r") as key_file:
+            with open(key_path, "r", encoding="utf-8") as key_file:
                 import_result = self.gpg.import_keys(key_file.read())
                 if import_result.count == 1:
                     imported_keys.append(import_result.fingerprints[0])
@@ -50,7 +43,7 @@ class GPGTestWrapper:
                     raise ValueError(f"Failed to import key from {key_path}")
         return imported_keys
 
-    def encrypt(self, data: str, recipients: List[str]) -> str:
+    def encrypt(self, data: str, recipients: list[str]) -> str:
         """Encrypt data for the specified recipients.
 
         Args:
@@ -65,7 +58,7 @@ class GPGTestWrapper:
             raise ValueError(f"Encryption failed: {encrypted.status}")
         return str(encrypted)
 
-    def decrypt(self, encrypted_data: str, passphrase: Optional[str] = None) -> str:
+    def decrypt(self, encrypted_data: str, passphrase: str | None = None) -> str:
         """Decrypt data using the imported private key.
 
         Args:
@@ -94,7 +87,7 @@ class GPGTestWrapper:
         return verified.valid
 
     def sign(
-        self, data: str, key_fingerprint: str, passphrase: Optional[str] = None
+        self, data: str, key_fingerprint: str, passphrase: str | None = None
     ) -> str:
         """Sign data with the specified key.
 

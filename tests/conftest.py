@@ -1,13 +1,22 @@
+import logging
 import os
 import re
+import smtplib
 import subprocess
-from typing import Any, Dict
+from typing import NamedTuple
 
 import pytest
 
 from tests.utils.gnupg_utils import GPGTestWrapper
 from tests.utils.mailpit_client import MailpitClient
 from tests.utils.path_utils import PROJECT_ROOT
+
+logger = logging.getLogger(__name__)
+
+
+class SmtpConfig(NamedTuple):
+    host: str
+    port: int
 
 
 def pytest_addoption(parser):
@@ -80,7 +89,7 @@ def pytest_addoption(parser):
 
 
 @pytest.fixture(scope="session")
-def smtp_config(request: pytest.FixtureRequest):
+def smtp_config(request: pytest.FixtureRequest) -> SmtpConfig:
     """SMTP configuration."""
     ini_host = request.config.getini("smtp_host")
     ini_port = request.config.getini("smtp_port")
@@ -89,21 +98,19 @@ def smtp_config(request: pytest.FixtureRequest):
     port_str = request.config.getoption("--smtp-port") or ini_port or "25"
     port = int(port_str)
 
-    return {"host": host, "port": port}
+    return SmtpConfig(host=host, port=port)
 
 
 @pytest.fixture
-def smtp_client(smtp_config: Dict[str, Any]):
+def smtp_client(smtp_config: SmtpConfig):
     """Create and yield an SMTP client connection."""
-    import smtplib
-
-    smtp = smtplib.SMTP(smtp_config["host"], smtp_config["port"])
+    smtp = smtplib.SMTP(smtp_config.host, smtp_config.port)
     yield smtp
     smtp.close()
 
 
 @pytest.fixture(scope="session")
-def mailpit_url(request: pytest.FixtureRequest):
+def mailpit_url(request: pytest.FixtureRequest) -> str:
     """Mailpit server base URL from CLI or ini."""
     cli_value = request.config.getoption("--mailpit-url")
     ini_value = request.config.getini("mailpit_url")
@@ -120,17 +127,17 @@ def mailpit_client(request: pytest.FixtureRequest, mailpit_url):
     if request.config.getoption("--disable-email-cleanup") or request.config.getini(
         "disable_email_cleanup"
     ):
-        print("Email cleanup disabled")
+        logger.info("Email cleanup disabled")
         return
 
     # Clean up any remaining messages after tests
     try:
         # Only delete if all tests passed. This is useful for debugging.
         if request.session.testsfailed == 0:
-            print("Deleting all messages from Mailpit")
+            logger.info("Deleting all messages from Mailpit")
             client.delete_all_messages()
         else:
-            print("Not deleting messages from Mailpit because test failed")
+            logger.info("Not deleting messages from Mailpit because test failed")
 
     except Exception:
         pass  # Ignore cleanup errors
@@ -157,12 +164,12 @@ def gpg_wrapper():
 @pytest.fixture(scope="session", autouse=True)
 def ensure_gnupghome():
     """Default GNUPGHOME for tests unless already set."""
-    if "GNUPGHOME" not in os.environ or not os.environ["GNUPGHOME"]:
+    if not os.environ.get("GNUPGHOME"):
         os.environ["GNUPGHOME"] = str(PROJECT_ROOT / "integrations" / "gnupg")
-        print(f"GNUPGHOME defaulted to: {os.environ['GNUPGHOME']}")
+        logger.info("GNUPGHOME defaulted to: %s", os.environ["GNUPGHOME"])
 
 
-def run_key_cleanup(pattern, pgp_utils_args):
+def run_key_cleanup(pattern: str, pgp_utils_args: list[str]) -> None:
     """Run pgp-utils.sh delete-keys for the given pattern and fail if no keys are deleted."""
     cleanup_result = subprocess.run(
         [
@@ -173,8 +180,7 @@ def run_key_cleanup(pattern, pgp_utils_args):
             pattern,
         ],
         check=False,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
     if cleanup_result.returncode == 0:
@@ -195,7 +201,7 @@ def run_key_cleanup(pattern, pgp_utils_args):
         )
 
 
-def run_keyserver_reset(pgp_utils_args):
+def run_keyserver_reset(pgp_utils_args: list[str]) -> None:
     """Run pgp-utils.sh reset-keyserver and raise on error."""
     reset_result = subprocess.run(
         [
@@ -204,8 +210,7 @@ def run_keyserver_reset(pgp_utils_args):
             "reset-keyserver",
         ],
         check=False,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
     if reset_result.returncode != 0:
@@ -219,47 +224,48 @@ def cleanup_keyserver_retrieved_keys(request):
     """Fixture to clean up keys containing 'missing' after test."""
     pgp_utils_args = get_gwmilter_flag(request)
     try:
-        print("Resetting keyserver to alive status in GPG dirmngr...")
+        logger.info("Resetting keyserver to alive status in GPG dirmngr...")
         run_keyserver_reset(pgp_utils_args)
     except Exception as e:
-        print(f"Error: failed to clean up keys: {e}")
+        logger.error("Failed to reset keyserver: %s", e)
         raise
 
     yield
 
     try:
-        print("Cleaning up keys with 'missing' in them...")
+        logger.info("Cleaning up keys with 'missing' in them...")
         cleanup_pattern = "pgp-(valid|expired)-missing-[0-9]+@example.com"
         run_key_cleanup(cleanup_pattern, pgp_utils_args)
     except Exception as e:
         # Only raise if the test did not fail
         if request.session.testsfailed == 0:
-            print(f"Error: failed to clean up keys: {e}")
+            logger.error("Failed to clean up keys: %s", e)
             raise
 
 
 @pytest.fixture(scope="session")
-def keys_dir(request: pytest.FixtureRequest):
+def keys_dir(request: pytest.FixtureRequest) -> str:
     """Fixture to get the keys directory from pytest config (CLI or ini)."""
     cli_value = request.config.getoption("--keys-dir")
     ini_value = request.config.getini("keys_dir")
     default_keys_dir = PROJECT_ROOT / "integrations" / "keys"
-    print(f"Default keys directory: {default_keys_dir}")
-    print(f"Keys directory: {cli_value or ini_value or str(default_keys_dir)}")
+    logger.info("Default keys directory: %s", default_keys_dir)
+    logger.info("Keys directory: %s", cli_value or ini_value or str(default_keys_dir))
     return cli_value or ini_value or str(default_keys_dir)
 
 
-def get_gwmilter_flag(request: pytest.FixtureRequest):
+def get_gwmilter_flag(request: pytest.FixtureRequest) -> list[str]:
+    """Return CLI flags for pgp-utils.sh based on gwmilter execution mode."""
     # CLI --gwmilter-local overrides everything.
     if request.config.getoption("--gwmilter-local"):
-        print("Running gwmilter locally")
+        logger.info("Running gwmilter locally")
         return ["--local"]
 
     container = request.config.getoption(
         "--gwmilter-container"
     ) or request.config.getini("gwmilter_container")
     if container:
-        print(f"Running gwmilter in container: {container}")
+        logger.info("Running gwmilter in container: %s", container)
         return ["--container", container]
 
     return ["--local"]

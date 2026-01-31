@@ -1,22 +1,17 @@
 import email
 from email import message_from_file, policy
-from email.message import EmailMessage
-from email.mime.multipart import MIMEMultipart
+from email.message import EmailMessage, Message
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
-
-from tests.utils.mailpit_client import Message
 
 
-def get_eml_files(eml_dir) -> List[str]:
+def get_eml_files(eml_dir: Path | str) -> list[Path]:
     """Get all .eml files from the directory."""
-    p = Path(eml_dir)
-    return [str(f) for f in p.glob("*.eml")]
+    return list(Path(eml_dir).glob("*.eml"))
 
 
 def create_email_from_file(
-    eml_file, from_addr, to_addrs, subject
-) -> Tuple[EmailMessage, str, str]:
+    eml_file: Path | str, from_addr: str, to_addrs: list[str], subject: str
+) -> tuple[EmailMessage, str, str]:
     """Create an email message from a file and set headers.
 
     Returns:
@@ -26,7 +21,7 @@ def create_email_from_file(
         - The original email body content as a string
     """
     # Parse the email file
-    with open(eml_file, "r") as f:
+    with open(eml_file, "r", encoding="utf-8") as f:
         email_message = message_from_file(f, policy=policy.SMTP)
 
     # Get the body before the headers are set, to facilitate byte-for-byte comparison
@@ -47,7 +42,7 @@ def create_email_from_file(
     return email_message, message_id, original_body
 
 
-def is_pgp_encrypted(email_message: Union[Message, str]) -> bool:
+def is_pgp_encrypted(email_message: Message | str) -> bool:
     """
     Check if an email message contains PGP encrypted content according to RFC3156.
 
@@ -60,32 +55,39 @@ def is_pgp_encrypted(email_message: Union[Message, str]) -> bool:
     if isinstance(email_message, str):
         email_message = email.message_from_string(email_message)
 
-    # Check for PGP/MIME content type according to RFC3156
-    content_type = email_message.get_content_type()
-    if content_type == "multipart/encrypted":
-        protocol = email_message.get_param("protocol")
-        if protocol == "application/pgp-encrypted":
-            # Get all parts using walk()
-            parts = list(email_message.walk())
-            if len(parts) == 3:
-                # First part must be application/pgp-encrypted with Version: 1
-                first_part = parts[1]
-                if (
-                    first_part.get_content_type() == "application/pgp-encrypted"
-                    and "Version: 1" in first_part.get_payload()
-                ):
-                    # Second part must be application/octet-stream
-                    second_part = parts[2]
-                    if second_part.get_content_type() == "application/octet-stream":
-                        return True
+    if email_message.get_content_type() != "multipart/encrypted":
+        return False
 
-    return False
+    if email_message.get_param("protocol") != "application/pgp-encrypted":
+        return False
+
+    parts = list(email_message.walk())
+    if len(parts) != 3:
+        return False
+
+    first_part = parts[1]
+    if first_part.get_content_type() != "application/pgp-encrypted":
+        return False
+    if "Version: 1" not in first_part.get_payload():
+        return False
+
+    return parts[2].get_content_type() == "application/octet-stream"
+
+
+def _decode_payload(payload: bytes | str, charset: str) -> str:
+    """Decode a payload from bytes to str, falling back to lossy decoding on error."""
+    if isinstance(payload, str):
+        return payload
+    try:
+        return payload.decode(charset)
+    except UnicodeDecodeError:
+        return payload.decode(charset, errors="replace")
 
 
 def compare_parts_unordered(
-    parts1: List[Union[EmailMessage, MIMEMultipart]],
-    parts2: List[Union[EmailMessage, MIMEMultipart]],
-    compare_headers: Optional[List[str]] = None,
+    parts1: list[Message],
+    parts2: list[Message],
+    compare_headers: list[str] | None = None,
     ignore_attachments: bool = False,
 ) -> bool:
     """
@@ -126,9 +128,9 @@ def compare_parts_unordered(
 
 
 def compare_email_content(
-    msg1: Union[EmailMessage, MIMEMultipart],
-    msg2: Union[EmailMessage, MIMEMultipart],
-    compare_headers: Optional[List[str]] = None,
+    msg1: Message,
+    msg2: Message,
+    compare_headers: list[str] | None = None,
     ignore_attachments: bool = False,
 ) -> bool:
     """
@@ -136,8 +138,8 @@ def compare_email_content(
     For multipart messages, recursively compare all parts.
 
     Args:
-        msg1: First email message object (EmailMessage or MIMEMultipart)
-        msg2: Second email message object (EmailMessage or MIMEMultipart)
+        msg1: First email message object
+        msg2: Second email message object
         compare_headers: Optional list of header names to compare
         ignore_attachments: If True, skip comparison of attachment parts
 
@@ -185,20 +187,9 @@ def compare_email_content(
         charset1 = msg1.get_content_charset() or "utf-8"
         charset2 = msg2.get_content_charset() or "utf-8"
 
-        try:
-            # Try strict decoding first
-            if isinstance(payload1, bytes):
-                payload1 = payload1.decode(charset1)
-            if isinstance(payload2, bytes):
-                payload2 = payload2.decode(charset2)
-        except UnicodeDecodeError:
-            # Fall back to replacement if strict decoding fails
-            if isinstance(payload1, bytes):
-                payload1 = payload1.decode(charset1, errors="replace")
-            if isinstance(payload2, bytes):
-                payload2 = payload2.decode(charset2, errors="replace")
-
-        return payload1 == payload2
+        return _decode_payload(payload1, charset1) == _decode_payload(
+            payload2, charset2
+        )
 
     # For multipart messages, compare all parts recursively
     parts1 = msg1.get_payload()
