@@ -1,8 +1,9 @@
 import email
+import smtplib
 from email import message_from_string, policy
-from pathlib import Path
+from typing import NamedTuple
+
 import pytest
-from tests.utils.path_utils import PROJECT_ROOT
 
 from tests.utils.email_utils import (
     compare_email_content,
@@ -10,9 +11,12 @@ from tests.utils.email_utils import (
     get_eml_files,
     is_pgp_encrypted,
 )
+from tests.utils.gnupg_utils import GPGTestWrapper
+from tests.utils.mailpit_client import MailpitClient
+from tests.utils.path_utils import PROJECT_ROOT
 
 eml_dir = PROJECT_ROOT / "tests" / "eml"
-eml_files = get_eml_files(str(eml_dir))
+eml_files = get_eml_files(eml_dir)
 
 # Define the key filenames to be used in tests
 PGP_KEY_PATHS = [
@@ -79,6 +83,15 @@ expired_key_scenarios = [
 ]
 
 
+class EmailTestSetup(NamedTuple):
+    from_addr: str
+    to_addrs: list[str]
+    expected_email_count: int
+    smtp_client: smtplib.SMTP
+    mailpit_client: MailpitClient
+    gpg_wrapper: GPGTestWrapper
+
+
 @pytest.fixture
 def email_test_setup(request, smtp_client, mailpit_client, gpg_wrapper, keys_dir):
     """Fixture that sets up the email test based on the scenario parameter."""
@@ -91,166 +104,129 @@ def email_test_setup(request, smtp_client, mailpit_client, gpg_wrapper, keys_dir
     # Import private keys using configurable keys_dir and PGP_KEY_PATHS
     gpg_wrapper.import_keys([f"{keys_dir}/{key_path}" for key_path in PGP_KEY_PATHS])
 
-    return {
-        "from_addr": from_addr,
-        "to_addrs": to_addrs,
-        "expected_email_count": expected_count,
-        "smtp_client": smtp_client,
-        "mailpit_client": mailpit_client,
-        "gpg_wrapper": gpg_wrapper,
-    }
+    return EmailTestSetup(
+        from_addr=from_addr,
+        to_addrs=to_addrs,
+        expected_email_count=expected_count,
+        smtp_client=smtp_client,
+        mailpit_client=mailpit_client,
+        gpg_wrapper=gpg_wrapper,
+    )
+
+
+def assert_pgp_encrypted_delivery(
+    setup: EmailTestSetup,
+    message_str: str,
+    message_id: str,
+    original_body: str,
+    extra_cycles: int = 1,
+) -> None:
+    """Send an email and verify it arrives PGP-encrypted with correct content."""
+    result = setup.smtp_client.sendmail(
+        setup.from_addr, setup.to_addrs, message_str
+    )
+    assert not result, f"Failed to send email to some recipients: {result}"
+
+    received_message_ids = setup.mailpit_client.wait_for_messages(
+        message_id, setup.to_addrs, extra_cycles=extra_cycles
+    )
+    assert len(received_message_ids) == setup.expected_email_count, (
+        f"Expected to find {setup.expected_email_count} emails for "
+        f"recipient(s): {setup.to_addrs}, but found {len(received_message_ids)}"
+    )
+
+    received_id = received_message_ids[0]
+    message_source = setup.mailpit_client.get_message_source(received_id)
+    assert message_source, "Failed to get message source from mailpit"
+    assert is_pgp_encrypted(message_source), "Message is not PGP encrypted"
+
+    decrypted_content = setup.gpg_wrapper.decrypt(message_source)
+    assert decrypted_content, "Failed to decrypt message content"
+    assert decrypted_content == original_body, (
+        "Decrypted content does not match original email body"
+    )
 
 
 @pytest.mark.parametrize("email_test_setup", single_protocol_scenarios, indirect=True)
-@pytest.mark.parametrize("eml_file", eml_files, ids=[Path(f).stem for f in eml_files])
+@pytest.mark.parametrize("eml_file", eml_files, ids=[f.stem for f in eml_files])
 def test_pgp_single_protocol_handler(eml_file, email_test_setup, request):
     """Test sending each email from the eml directory and verify PGP decryption."""
-
-    # Extract test setup parameters
-    from_addr = email_test_setup["from_addr"]
-    to_addrs = email_test_setup["to_addrs"]
-    expected_email_count = email_test_setup["expected_email_count"]
-    smtp_client = email_test_setup["smtp_client"]
-    mailpit_client = email_test_setup["mailpit_client"]
-    gpg_wrapper = email_test_setup["gpg_wrapper"]
-
-    # Create email message with proper headers
     email_message, message_id, original_body = create_email_from_file(
-        eml_file, from_addr, to_addrs, request.node.name
+        eml_file, email_test_setup.from_addr, email_test_setup.to_addrs,
+        request.node.name,
     )
 
-    try:
-        # Send the email using the fixture
-        result = smtp_client.sendmail(from_addr, to_addrs, email_message.as_string())
-        assert not result, f"Failed to send email to some recipients: {result}"
-
-        # Wait for the email to arrive in mailpit and get the message ID
-        received_message_ids = mailpit_client.wait_for_messages(
-            message_id, to_addrs, extra_cycles=1
-        )
-        # Verify the expected number of emails were received
-        assert len(received_message_ids) == expected_email_count, (
-            f"Expected to find {expected_email_count} emails for recipient(s): {to_addrs}, but found {len(received_message_ids)}"
-        )
-        received_message_id = received_message_ids[0]  # Get the first message ID
-
-        # Get the full message source from mailpit
-        message_source = mailpit_client.get_message_source(received_message_id)
-        assert message_source, "Failed to get message source from mailpit"
-
-        # Verify the message is PGP encrypted
-        assert is_pgp_encrypted(message_source), "Message is not PGP encrypted"
-
-        # Try to decrypt the message using the GPG wrapper
-        try:
-            decrypted_content = gpg_wrapper.decrypt(message_source)
-            assert decrypted_content, "Failed to decrypt message content"
-
-            # Compare the decrypted content with the original email body
-            assert decrypted_content == original_body, (
-                "Decrypted content does not match original email body"
-            )
-
-        except ValueError as e:
-            pytest.fail(f"PGP decryption failed: {str(e)}")
-
-    except Exception as e:
-        pytest.fail(f"Failed to send email: {str(e)}")
+    assert_pgp_encrypted_delivery(
+        email_test_setup, email_message.as_string(), message_id, original_body,
+    )
 
 
 @pytest.mark.parametrize("email_test_setup", multiple_protocol_scenarios, indirect=True)
-@pytest.mark.parametrize("eml_file", eml_files, ids=[Path(f).stem for f in eml_files])
+@pytest.mark.parametrize("eml_file", eml_files, ids=[f.stem for f in eml_files])
 def test_pgp_multiple_protocol_handlers(eml_file, email_test_setup, request):
     """Test sending each email from the eml directory and verify PGP decryption."""
+    setup = email_test_setup
 
-    # Extract test setup parameters
-    from_addr = email_test_setup["from_addr"]
-    to_addrs = email_test_setup["to_addrs"]
-    expected_email_count = email_test_setup["expected_email_count"]
-    smtp_client = email_test_setup["smtp_client"]
-    mailpit_client = email_test_setup["mailpit_client"]
-    gpg_wrapper = email_test_setup["gpg_wrapper"]
-
-    # Create email message with proper headers
     email_message, message_id, original_body = create_email_from_file(
-        eml_file, from_addr, to_addrs, request.node.name
+        eml_file, setup.from_addr, setup.to_addrs, request.node.name,
     )
 
-    try:
-        # Send the email using the fixture
-        result = smtp_client.sendmail(from_addr, to_addrs, email_message.as_string())
-        assert not result, f"Failed to send email to some recipients: {result}"
+    result = setup.smtp_client.sendmail(
+        setup.from_addr, setup.to_addrs, email_message.as_string()
+    )
+    assert not result, f"Failed to send email to some recipients: {result}"
 
-        # Wait for the email to arrive in mailpit and get the message ID
-        received_message_ids = mailpit_client.wait_for_messages(
-            message_id, to_addrs, extra_cycles=3
-        )
-        # Verify the expected number of emails were received
-        assert len(received_message_ids) == expected_email_count, (
-            f"Expected to find {expected_email_count} emails for recipient(s): {to_addrs}, but found {len(received_message_ids)}"
-        )
+    received_message_ids = setup.mailpit_client.wait_for_messages(
+        message_id, setup.to_addrs, extra_cycles=3
+    )
+    assert len(received_message_ids) == setup.expected_email_count, (
+        f"Expected to find {setup.expected_email_count} emails for "
+        f"recipient(s): {setup.to_addrs}, but found {len(received_message_ids)}"
+    )
 
-        encrypted_count = 0
-        unencrypted_count = 0
+    encrypted_count = 0
+    unencrypted_count = 0
 
-        # Check each received message
-        for received_message_id in received_message_ids:
-            # Get the full message source from mailpit
-            message_source = mailpit_client.get_message_source(received_message_id)
-            assert message_source, "Failed to get message source from mailpit"
+    for received_message_id in received_message_ids:
+        message_source = setup.mailpit_client.get_message_source(received_message_id)
+        assert message_source, "Failed to get message source from mailpit"
 
-            # Check if the message is PGP encrypted
-            if is_pgp_encrypted(message_source):
-                encrypted_count += 1
+        if is_pgp_encrypted(message_source):
+            encrypted_count += 1
 
-                # Try to decrypt the message using the GPG wrapper
-                try:
-                    decrypted_content = gpg_wrapper.decrypt(message_source)
-                    assert decrypted_content, "Failed to decrypt message content"
-
-                    # Compare the decrypted content with the original email body
-                    assert decrypted_content == original_body, (
-                        "Decrypted content does not match original email body"
-                    )
-                except ValueError as e:
-                    pytest.fail(f"PGP decryption failed: {str(e)}")
-            else:
-                unencrypted_count += 1
-
-                # Parse the raw message into an email message object
-                received_message = email.message_from_string(
-                    message_source, policy=policy.SMTP
-                )
-
-                # Create a new object from the original email to ensure consistent policy
-                original_message = email.message_from_string(
-                    email_message.as_string(), policy=policy.SMTP
-                )
-
-                # Compare the received message with the original email using compare_email_content
-                # Ignoring headers as they may be modified during transit
-                assert compare_email_content(
-                    received_message,
-                    original_message,
-                    compare_headers=["Subject", "From"],
-                    ignore_attachments=False,
-                ), "Unencrypted email content does not match original email"
-
-        # Verify we have the right mix of encrypted and unencrypted emails
-        if expected_email_count == 2:
-            assert encrypted_count == 1, (
-                f"Expected 1 encrypted email, got {encrypted_count}"
-            )
-            assert unencrypted_count == 1, (
-                f"Expected 1 unencrypted email, got {unencrypted_count}"
+            decrypted_content = setup.gpg_wrapper.decrypt(message_source)
+            assert decrypted_content, "Failed to decrypt message content"
+            assert decrypted_content == original_body, (
+                "Decrypted content does not match original email body"
             )
         else:
-            # For scenarios with more than 2 emails, just check that we have at least one of each type
-            assert encrypted_count >= 1, "Expected at least 1 encrypted email"
-            assert unencrypted_count >= 1, "Expected at least 1 unencrypted email"
+            unencrypted_count += 1
 
-    except Exception as e:
-        pytest.fail(f"Failed to send email: {str(e)}")
+            received_message = email.message_from_string(
+                message_source, policy=policy.SMTP
+            )
+            original_message = email.message_from_string(
+                email_message.as_string(), policy=policy.SMTP
+            )
+
+            assert compare_email_content(
+                received_message,
+                original_message,
+                compare_headers=["Subject", "From"],
+                ignore_attachments=False,
+            ), "Unencrypted email content does not match original email"
+
+    # Verify we have the right mix of encrypted and unencrypted emails
+    if setup.expected_email_count == 2:
+        assert encrypted_count == 1, (
+            f"Expected 1 encrypted email, got {encrypted_count}"
+        )
+        assert unencrypted_count == 1, (
+            f"Expected 1 unencrypted email, got {unencrypted_count}"
+        )
+    else:
+        assert encrypted_count >= 1, "Expected at least 1 encrypted email"
+        assert unencrypted_count >= 1, "Expected at least 1 unencrypted email"
 
 
 @pytest.mark.parametrize("email_test_setup", keyserver_scenarios, indirect=True)
@@ -258,14 +234,7 @@ def test_pgp_recv_key_from_keyserver(
     email_test_setup, request, cleanup_keyserver_retrieved_keys
 ):
     """Test sending email to recipient with key available on keyserver."""
-
-    # Extract test setup parameters
-    from_addr = email_test_setup["from_addr"]
-    to_addrs = email_test_setup["to_addrs"]
-    expected_email_count = email_test_setup["expected_email_count"]
-    smtp_client = email_test_setup["smtp_client"]
-    mailpit_client = email_test_setup["mailpit_client"]
-    gpg_wrapper = email_test_setup["gpg_wrapper"]
+    setup = email_test_setup
 
     message_id = email.utils.make_msgid()
     content = (
@@ -276,68 +245,32 @@ def test_pgp_recv_key_from_keyserver(
     original_body = msg.as_string()
 
     msg["Message-ID"] = message_id
-    msg["From"] = from_addr
-    msg["To"] = ", ".join(to_addrs)
+    msg["From"] = setup.from_addr
+    msg["To"] = ", ".join(setup.to_addrs)
     msg["Subject"] = "Test Key Retrieval from Keyserver"
 
-    try:
-        # Send the email
-        result = smtp_client.sendmail(from_addr, to_addrs, msg.as_string())
-        assert not result, f"Failed to send email to some recipients: {result}"
-
-        # Wait for the email to arrive in mailpit and get the message ID
-        received_message_ids = mailpit_client.wait_for_messages(
-            message_id, to_addrs, extra_cycles=1
-        )
-        # Verify the expected number of emails were received
-        assert len(received_message_ids) == expected_email_count, (
-            f"Expected to find {expected_email_count} emails for recipient(s): {to_addrs}, but found {len(received_message_ids)}"
-        )
-        received_message_id = received_message_ids[0]  # Get the first message ID
-
-        # Get the full message source from mailpit
-        message_source = mailpit_client.get_message_source(received_message_id)
-        assert message_source, "Failed to get message source from mailpit"
-
-        # Verify the message is PGP encrypted
-        assert is_pgp_encrypted(message_source), "Message is not PGP encrypted"
-
-        # Try to decrypt the message using the GPG wrapper
-        try:
-            decrypted_content = gpg_wrapper.decrypt(message_source)
-            assert decrypted_content, "Failed to decrypt message content"
-
-            # Compare the content byte-for-byte
-            assert decrypted_content == original_body, (
-                "Decrypted content does not match original email body"
-            )
-
-        except ValueError as e:
-            pytest.fail(f"PGP decryption failed: {str(e)}")
-
-    except Exception as e:
-        pytest.fail(f"Failed to send email: {str(e)}")
+    assert_pgp_encrypted_delivery(
+        setup, msg.as_string(), message_id, original_body,
+    )
 
 
 @pytest.mark.parametrize("email_test_setup", expired_key_scenarios, indirect=True)
-@pytest.mark.parametrize("eml_file", [eml_files[0]], ids=[Path(eml_files[0]).stem])
+@pytest.mark.parametrize(
+    "eml_file", eml_files[:1], ids=[f.stem for f in eml_files[:1]]
+)
 def test_pgp_expired_key(eml_file, email_test_setup, request):
     """Test sending email to recipient with expired PGP key fails."""
+    setup = email_test_setup
 
-    # Extract test setup parameters
-    from_addr = email_test_setup["from_addr"]
-    to_addrs = email_test_setup["to_addrs"]
-    smtp_client = email_test_setup["smtp_client"]
-    mailpit_client = email_test_setup["mailpit_client"]
-
-    # Create email message with proper headers
     email_message, message_id, original_body = create_email_from_file(
-        eml_file, from_addr, to_addrs, request.node.name
+        eml_file, setup.from_addr, setup.to_addrs, request.node.name,
     )
 
     # The SMTP send should fail, so we use pytest.raises to catch the expected exception
     with pytest.raises(Exception) as excinfo:
-        smtp_client.sendmail(from_addr, to_addrs, email_message.as_string())
+        setup.smtp_client.sendmail(
+            setup.from_addr, setup.to_addrs, email_message.as_string()
+        )
 
     # Check that the SMTP error code is 550
     error_code = excinfo.value.args[0]
@@ -345,8 +278,8 @@ def test_pgp_expired_key(eml_file, email_test_setup, request):
 
     # Verify that no emails were delivered to mailpit
     # Use a small number of cycles to check that nothing arrives
-    received_message_ids = mailpit_client.wait_for_messages(
-        message_id, to_addrs, max_wait_time=2
+    received_message_ids = setup.mailpit_client.wait_for_messages(
+        message_id, setup.to_addrs, max_wait_time=2
     )
 
     # Verify that no emails were received

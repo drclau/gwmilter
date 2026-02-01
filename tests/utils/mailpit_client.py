@@ -21,12 +21,15 @@ For testing:
     )
 """
 
+import logging
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, NewType, Optional
+from typing import NewType
 
 import requests
 from dataclasses_json import LetterCase, config, dataclass_json
+
+logger = logging.getLogger(__name__)
 
 # Custom types
 ID = NewType("ID", str)
@@ -39,17 +42,17 @@ ID = NewType("ID", str)
 @dataclass
 class Recipient:
     address: str
-    name: Optional[str] = None
+    name: str | None = None
 
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass
 class MessageAttachment:
-    content_id: Optional[str] = None
-    content_type: Optional[str] = None
-    file_name: Optional[str] = None
-    part_id: Optional[str] = None
-    size: Optional[int] = None
+    content_id: str | None = None
+    content_type: str | None = None
+    file_name: str | None = None
+    part_id: str | None = None
+    size: int | None = None
 
 
 @dataclass_json(letter_case=LetterCase.PASCAL)
@@ -59,30 +62,30 @@ class Message:
     from_: Recipient = field(metadata=config(field_name="From"))
     subject: str = field(metadata=config(field_name="Subject"))
     size: float = field(metadata=config(field_name="Size"))
-    message_id: Optional[str] = field(
+    message_id: str | None = field(
         default=None, metadata=config(field_name="MessageID")
     )
-    date: Optional[str] = field(default=None, metadata=config(field_name="Date"))
-    to: List[Recipient] = field(default_factory=list, metadata=config(field_name="To"))
-    cc: Optional[List[Recipient]] = field(
+    date: str | None = field(default=None, metadata=config(field_name="Date"))
+    to: list[Recipient] = field(default_factory=list, metadata=config(field_name="To"))
+    cc: list[Recipient] | None = field(
         default=None, metadata=config(field_name="Cc")
     )
-    bcc: Optional[List[Recipient]] = field(
+    bcc: list[Recipient] | None = field(
         default=None, metadata=config(field_name="Bcc")
     )
-    reply_to: List[Recipient] = field(
+    reply_to: list[Recipient] = field(
         default_factory=list, metadata=config(field_name="ReplyTo")
     )
-    return_path: Optional[str] = field(
+    return_path: str | None = field(
         default=None, metadata=config(field_name="ReturnPath")
     )
-    text: Optional[str] = field(default=None, metadata=config(field_name="Text"))
-    html: Optional[str] = field(default=None, metadata=config(field_name="HTML"))
-    tags: List[str] = field(default_factory=list, metadata=config(field_name="Tags"))
-    attachments: List[MessageAttachment] = field(
+    text: str | None = field(default=None, metadata=config(field_name="Text"))
+    html: str | None = field(default=None, metadata=config(field_name="HTML"))
+    tags: list[str] = field(default_factory=list, metadata=config(field_name="Tags"))
+    attachments: list[MessageAttachment] = field(
         default_factory=list, metadata=config(field_name="Attachments")
     )
-    inline: List[MessageAttachment] = field(
+    inline: list[MessageAttachment] = field(
         default_factory=list, metadata=config(field_name="Inline")
     )
 
@@ -94,43 +97,43 @@ class MessageSummary:
     from_: Recipient = field(metadata=config(field_name="From"))
     subject: str = field(metadata=config(field_name="Subject"))
     size: float = field(metadata=config(field_name="Size"))
-    message_id: Optional[str] = field(
+    message_id: str | None = field(
         default=None, metadata=config(field_name="MessageID")
     )
-    created: Optional[str] = field(default=None, metadata=config(field_name="Created"))
-    to: List[Recipient] = field(default_factory=list, metadata=config(field_name="To"))
-    cc: Optional[List[Recipient]] = field(
+    created: str | None = field(default=None, metadata=config(field_name="Created"))
+    to: list[Recipient] = field(default_factory=list, metadata=config(field_name="To"))
+    cc: list[Recipient] | None = field(
         default=None, metadata=config(field_name="Cc")
     )
-    bcc: Optional[List[Recipient]] = field(
+    bcc: list[Recipient] | None = field(
         default=None, metadata=config(field_name="Bcc")
     )
-    reply_to: List[Recipient] = field(
+    reply_to: list[Recipient] = field(
         default_factory=list, metadata=config(field_name="ReplyTo")
     )
-    snippet: Optional[str] = field(default=None, metadata=config(field_name="Snippet"))
+    snippet: str | None = field(default=None, metadata=config(field_name="Snippet"))
     read: bool = field(default=False, metadata=config(field_name="Read"))
     attachments: int = field(default=0, metadata=config(field_name="Attachments"))
-    tags: List[str] = field(default_factory=list, metadata=config(field_name="Tags"))
+    tags: list[str] = field(default_factory=list, metadata=config(field_name="Tags"))
 
 
 @dataclass_json(letter_case=LetterCase.SNAKE)
 @dataclass
 class MessagesSummary:
     count: int
-    messagesCount: int
+    messages_count: int
     unread: int
-    messages: List[MessageSummary] = field(default_factory=list)
-    tags: List[str] = field(default_factory=list)
+    messages: list[MessageSummary] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     start: int = 0
-    totalTags: int = 0
+    total_tags: int = 0
     total: int = 0
 
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass
 class MessageHeadersResponse:
-    headers: List[Dict[str, str]] = field(default_factory=list)
+    headers: list[dict[str, str]] = field(default_factory=list)
 
 
 # Client Implementation
@@ -143,12 +146,12 @@ class MailpitClient:
         self,
         start: int = 0,
         limit: int = 50,
-        search: Optional[str] = None,
-        tags: Optional[List[str]] = None,
-        unread: Optional[bool] = None,
+        search: str | None = None,
+        tags: list[str] | None = None,
+        unread: bool | None = None,
     ) -> MessagesSummary:
         """Get messages summary"""
-        params = {"start": start, "limit": limit}
+        params: dict[str, str | int] = {"start": start, "limit": limit}
         if search:
             params["search"] = search
         if tags:
@@ -156,14 +159,10 @@ class MailpitClient:
         if unread is not None:
             params["unread"] = "1" if unread else "0"
 
-        try:
-            response = requests.get(f"{self.api_url}/messages", params=params)
-            response.raise_for_status()
-            data = response.json()
-            return MessagesSummary.from_dict(data)
-        except requests.exceptions.RequestException as e:
-            print(f"Error fetching messages: {e}")
-            raise
+        response = requests.get(f"{self.api_url}/messages", params=params)
+        response.raise_for_status()
+        data = response.json()
+        return MessagesSummary.from_dict(data)
 
     def get_message(self, message_id: ID) -> Message:
         """Get a specific message"""
@@ -222,32 +221,32 @@ class MailpitClient:
         response = requests.put(f"{self.api_url}/message/{message_id}/unread")
         response.raise_for_status()
 
-    def get_tags(self) -> List[str]:
+    def get_tags(self) -> list[str]:
         """Get all tags"""
         response = requests.get(f"{self.api_url}/tags")
         response.raise_for_status()
         return response.json()
 
-    def tag_message(self, message_id: ID, tags: List[str]) -> None:
+    def tag_message(self, message_id: ID, tags: list[str]) -> None:
         """Tag a message"""
         response = requests.put(f"{self.api_url}/message/{message_id}/tags", json=tags)
         response.raise_for_status()
 
     def wait_for_messages(
         self,
-        message_id,
-        to_addrs,
-        count=1,
-        max_wait_time=5,
-        check_interval=0.5,
-        extra_cycles=3,
-    ) -> List[ID]:
+        message_id: str,
+        to_addrs: str | list[str],
+        count: int = 1,
+        max_wait_time: float = 5,
+        check_interval: float = 0.5,
+        extra_cycles: int = 3,
+    ) -> list[ID]:
         """
         Wait for a specified number of emails to arrive in mailpit and return their message IDs.
 
         Args:
             message_id: The expected message ID to look for
-            to_addrs: List of recipient addresses to check
+            to_addrs: Recipient address or list of recipient addresses to check
             count: Number of messages to wait for (default: 1)
             max_wait_time: Maximum time to wait in seconds
             check_interval: Time between checks in seconds
@@ -261,7 +260,7 @@ class MailpitClient:
 
         end_time = time.time() + max_wait_time
 
-        found_messages: List[ID] = []
+        found_messages: list[ID] = []
         cycles_after_found = 0
         required_count_found = False
 
@@ -283,8 +282,9 @@ class MailpitClient:
                     recipients = [to.address for to in msg.to]
                     if any(recipient in recipients for recipient in to_addrs):
                         found_messages.append(ID(msg.id))
-                        print(
-                            f"Email found in mailpit with message ID: {msg.message_id}"
+                        logger.debug(
+                            "Email found in mailpit with message ID: %s",
+                            msg.message_id,
                         )
                         if len(found_messages) >= count and not required_count_found:
                             required_count_found = True
@@ -292,8 +292,10 @@ class MailpitClient:
             # If we've found the required count, start counting extra cycles
             if required_count_found:
                 cycles_after_found += 1
-                print(
-                    f"Found required count, waiting extra cycle {cycles_after_found}/{extra_cycles}"
+                logger.debug(
+                    "Found required count, waiting extra cycle %d/%d",
+                    cycles_after_found,
+                    extra_cycles,
                 )
 
             time.sleep(check_interval)
