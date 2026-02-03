@@ -266,7 +266,7 @@ def lookup(
             search_type = "email"
             # Length-bounded pattern to prevent ReDoS (polynomial backtracking)
             email_match = re.search(
-                r"([a-zA-Z0-9_.+-]{1,64}@[a-zA-Z0-9-]{1,63}(?:\.[a-zA-Z0-9-]{1,63})*\.[a-zA-Z]{2,10})",
+                r"([a-zA-Z0-9_.+-]{1,64}@[a-zA-Z0-9-]{1,63}(?:\.[a-zA-Z0-9-]{1,63})*\.[a-zA-Z0-9-]{2,63})",
                 search,
             )
             if email_match:
