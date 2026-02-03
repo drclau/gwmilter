@@ -52,7 +52,13 @@ def get_key_by_email(email: str) -> str | None:
     Retrieve a PGP key for the given email address.
     """
     email = sanitize_email(email)
-    key_path = KEYS_DIR / f"{email}.pgp"
+    key_path = (KEYS_DIR / f"{email}.pgp").resolve()
+
+    # Defense in depth: ensure path is within KEYS_DIR
+    if not key_path.is_relative_to(KEYS_DIR.resolve()):
+        logger.warning(f"Path traversal attempt detected for email: {email}")
+        raise HTTPException(status_code=400, detail="Invalid email format")
+
     if not key_path.exists():
         return None
 
