@@ -1,4 +1,4 @@
-pytest==8.4.2
+pytest==9.0.3
 python-gnupg==0.5.5
 requests==2.33.0
 dataclasses-json==0.6.7
